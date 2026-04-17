@@ -71,3 +71,19 @@ def test_load_rejects_non_ed25519_key(tmp_path: Path) -> None:
     bogus.write_bytes(b"not a real PEM")
     with pytest.raises(Exception):
         load_private_key(bogus)
+
+
+def test_save_creates_missing_parent_dirs(tmp_path: Path) -> None:
+    """save_private_key() must create missing parent directories rather
+    than raising FileNotFoundError. This is the regression guard against
+    the README's `keygen --out ./keys/verifier.ed25519` failing on a
+    clean checkout where `./keys/` doesn't exist."""
+    key = generate_keypair()
+    nested = tmp_path / "deeply" / "nested" / "keys" / "verifier.ed25519"
+    assert not nested.parent.exists()
+    save_private_key(key, nested)
+    assert nested.exists()
+    # And the loaded key must work round-trip.
+    loaded = load_private_key(nested)
+    payload = b"after reload"
+    assert verify_signature(loaded.public_key(), payload, sign_bytes(key, payload))

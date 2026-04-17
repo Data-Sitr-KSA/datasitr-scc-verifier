@@ -1,10 +1,20 @@
 """Rule bundle identity + content hashing.
 
 A rule bundle is the collection of schemas, Rego rule files, and test
-vectors that define what the verifier checks against. For an attestation
-to be reproducible by a third party, every attestation must commit to the
-exact bundle content it was evaluated under — not an opaque version
-string, but a cryptographic hash of the bundle bytes.
+vectors (including their per-vector *.expected.json files) that define
+what the verifier checks against. For an attestation to be reproducible
+by a third party, every attestation must commit to the exact bundle
+content it was evaluated under — not an opaque version string, but a
+cryptographic hash of the bundle bytes.
+
+Test vectors are included in the bundle hash because they are part of
+the public reproducibility contract: a third party verifying an
+attestation should be able to re-run the same corpus against the same
+rule bundle and get the same outcome. A rule change without a
+corresponding test-vector update changes the bundle hash twice — once
+for the rule file and once for any vector whose expected outcome moves —
+and that dual-change property is what makes rule regressions detectable
+at bundle-hash level.
 
 This module computes that hash deterministically from the shipped
 repository layout. The hash is stable across machines and Python versions
@@ -26,6 +36,12 @@ REPO_ROOT = Path(__file__).parent.parent
 
 # Files that make up the "bundle content" — everything whose change should
 # invalidate prior attestations. Order-independent; we sort before hashing.
+#
+# Ordering rationale:
+#   - schemas/ — the canonical forms (SCC, attestation, evidence)
+#   - rules/ — the semantic + structural + judgment rule catalogue
+#   - test_vectors/ — the public reproducibility corpus (SCC docs +
+#     per-vector *.expected.json outcomes)
 BUNDLE_GLOBS: tuple[str, ...] = (
     "schemas/*.json",
     "rules/structural/*.rego",
@@ -34,6 +50,7 @@ BUNDLE_GLOBS: tuple[str, ...] = (
     "rules/freshness/*.rego",
     "rules/anchor/*.rego",
     "rules/judgment/*.rego",
+    "test_vectors/**/*.json",
 )
 
 BUNDLE_ID = "sdaia-scc-v0.1-2026-04-17"

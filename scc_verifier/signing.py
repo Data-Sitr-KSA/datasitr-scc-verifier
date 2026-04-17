@@ -51,10 +51,14 @@ def generate_keypair() -> Ed25519PrivateKey:
 def save_private_key(key: Ed25519PrivateKey, path: Path) -> None:
     """Persist a private key to disk as unencrypted PEM.
 
+    Creates parent directories if they don't exist. Writes with mode 0600
+    on filesystems that support it.
+
     For v0.1 we do not encrypt the key at rest. Production deployments
     should encrypt with a passphrase or move to an HSM/KMS. The .gitignore
     excludes *.ed25519 and *.pem so keys don't land in the repo.
     """
+    path.parent.mkdir(parents=True, exist_ok=True)
     pem = key.private_bytes(
         encoding=Encoding.PEM,
         format=PrivateFormat.PKCS8,

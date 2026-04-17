@@ -62,3 +62,31 @@ def test_bundle_id_is_dated() -> None:
     pattern so historical attestations remain reproducible."""
     assert BUNDLE_ID.startswith("sdaia-scc-v")
     assert "-2026-" in BUNDLE_ID or "-2025-" in BUNDLE_ID
+
+
+def test_bundle_manifest_includes_test_vectors() -> None:
+    """Test vectors are part of the public reproducibility contract, so
+    their bytes must be covered by the bundle hash. If this test fails,
+    BUNDLE_GLOBS has drifted from the documented bundle contents."""
+    manifest = bundle_manifest()
+    vector_paths = [p for p in manifest if p.startswith("test_vectors/")]
+    assert vector_paths, "bundle manifest must include test_vectors/*.json files"
+    # Sanity: at least the shipped known-good vector and its expected file.
+    assert any("known_good" in p for p in vector_paths)
+    assert any(".expected.json" in p for p in vector_paths)
+
+
+def test_bundle_hash_changes_when_test_vector_changes(tmp_path: Path) -> None:
+    """Mutating a test-vector file must change the bundle hash. This is
+    the regression guard against the reviewer's P2: the vector corpus is
+    part of the bundle and must be bound to the hash."""
+    # Construct a minimal two-file bundle (one schema, one vector) and
+    # confirm that flipping the vector bytes flips the bundle hash.
+    root_a = tmp_path / "a"
+    root_b = tmp_path / "b"
+    for root, vector_content in [(root_a, b'{"v":1}'), (root_b, b'{"v":2}')]:
+        (root / "schemas").mkdir(parents=True)
+        (root / "schemas" / "s.json").write_bytes(b'{"schema":"dummy"}')
+        (root / "test_vectors" / "cat").mkdir(parents=True)
+        (root / "test_vectors" / "cat" / "v.json").write_bytes(vector_content)
+    assert compute_bundle_hash(root_a) != compute_bundle_hash(root_b)

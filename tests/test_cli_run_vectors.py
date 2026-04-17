@@ -51,3 +51,28 @@ def test_verify_exits_nonzero_on_structurally_malformed(tmp_path) -> None:
         ]
     )
     assert exit_code != 0
+
+
+def test_keygen_creates_nested_output_dir(tmp_path) -> None:
+    """The README's first-run example writes into ./keys/verifier.ed25519,
+    which doesn't exist on a clean checkout. keygen must create missing
+    parent directories rather than raising FileNotFoundError."""
+    out = tmp_path / "does" / "not" / "yet" / "exist" / "key.ed25519"
+    assert not out.parent.exists()
+    exit_code = cli_main(["keygen", "--out", str(out)])
+    assert exit_code == 0
+    assert out.exists()
+
+
+def test_keygen_refuses_to_overwrite_without_force(tmp_path) -> None:
+    out = tmp_path / "key.ed25519"
+    assert cli_main(["keygen", "--out", str(out)]) == 0
+    assert cli_main(["keygen", "--out", str(out)]) != 0
+
+
+def test_keygen_force_overwrites(tmp_path) -> None:
+    out = tmp_path / "key.ed25519"
+    assert cli_main(["keygen", "--out", str(out)]) == 0
+    original = out.read_bytes()
+    assert cli_main(["keygen", "--out", str(out), "--force"]) == 0
+    assert out.read_bytes() != original
