@@ -2,7 +2,7 @@
 
 **Machine-verifiable compliance for SDAIA Standard Contractual Clauses under the Saudi Personal Data Protection Law (PDPL).**
 
-A deterministic, transparent, cryptographically-attestable verifier that produces signed verdicts about whether a given SCC document satisfies the structural, value-bound, reference-integrity, freshness, and regulatory-anchor requirements of the SDAIA SCC template (issued 2 September 2024) and the Regulation on Personal Data Transfer Outside the Kingdom (1 September 2024).
+A deterministic, transparent, cryptographically-attestable verifier that produces signed verdicts about the structural, value-bound, reference-integrity, freshness, and regulatory-anchor requirements of the SDAIA SCC template (issued 2 September 2024) and the Regulation on Personal Data Transfer Outside the Kingdom (1 September 2024).
 
 The verifier honestly flags judgment-bound clauses (liability reasonableness, government-access warranties, etc.) as requiring human review. It does not replace Saudi-licensed counsel; it focuses counsel time on the clauses that actually require legal judgment.
 
@@ -11,25 +11,19 @@ This is a reference implementation. It is offered to SDAIA for ratification and 
 ## Status
 
 **Version:** 0.1.0-draft (pre-counsel-review)
-**Ratification:** Not yet ratified by SDAIA.
-**License:** Apache-2.0 for code and rule bundle; CC0 for schemas and test vectors.
+**Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
+**License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
-## What this verifier does
+## What v0.1 actually does (scope ratchet; read this before citing)
 
-Given three inputs:
+| Layer | What it is | v0.1 status |
+|---|---|---|
+| **1. Structural** | JSON Schema Draft 2020-12 validation of the SCC canonical form, with `format: date` / `format: date-time` enforced via `FormatChecker`. | **Live and tested.** 11 regression tests cover missing clauses, bad date formats, out-of-range values, enum violations. |
+| **2. Semantic** | Rego rules (Open Policy Agent) encoding value-bound, reference-integrity, and freshness constraints. 9 rules authored in `rules/`. | **Authored, not wired.** The OPA runtime integration lands in v0.2. Test vectors exercising Layer-2 rules are marked `pending_layer_2: true` and skipped by `run-vectors`. |
+| **3. Evidence** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists via W3C Verifiable Credentials. | **Deferred to v0.2.** |
+| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
 
-1. An SCC document in canonical form (JSON, conforming to `schemas/scc-canonical-v1.json`)
-2. A signed rule bundle (structure: `rules/` + `schemas/` + `test_vectors/` + signed manifest)
-3. An evidence bundle (TRA records, TOMs snapshots, sub-processor registry, all as signed W3C Verifiable Credentials)
-
-It produces an Ed25519-signed attestation (`schemas/attestation-envelope-v1.json`) with:
-
-- Per-check verdicts across 40+ machine-checkable rules
-- Cryptographic evidence links for every substantive field
-- Explicit `REQUIRES_HUMAN_REVIEW` flags for judgment clauses
-- A rule-bundle version and hash so the verdict is reproducible forever
-
-Every verdict is **deterministic**: the same inputs always produce the same output. A third party with the same inputs and the same rule bundle can independently reproduce any attestation.
+v0.1 is a floor, not a ceiling. The public envelope format, schemas, and rule-bundle-hash semantics are stable; new rules ratchet upward through v0.2 and v0.3 without breaking attestations produced under prior bundles.
 
 ## What this verifier does NOT do
 
@@ -37,7 +31,7 @@ Every verdict is **deterministic**: the same inputs always produce the same outp
 - It does not replace counsel. It focuses counsel work on judgment clauses.
 - It does not decide commercial reasonableness. It flags those clauses.
 - It does not verify counterparty good faith. Cryptographic evidence is not moral evidence.
-- It is not an AI system. There is no model, no inference, no probabilistic output. It is policy-as-code.
+- It is not an AI system. There is no model, no inference, no probabilistic output. It is deterministic policy-as-code.
 
 ## Standards
 
@@ -46,8 +40,8 @@ Every primitive is a well-reviewed standard. No novel cryptography.
 - **Ed25519 signatures** (RFC 8032)
 - **SHA-256 hashing** (FIPS 180-4)
 - **JSON Canonicalization Scheme** (RFC 8785) for deterministic hashing
-- **JSON Schema Draft 2020-12** for structural validation
-- **Open Policy Agent / Rego** for semantic rules
+- **JSON Schema Draft 2020-12** for structural validation, with `FormatChecker` enforcing `date` / `date-time`
+- **Open Policy Agent / Rego** for semantic rules (rules authored; evaluator lands in v0.2)
 - **W3C Verifiable Credentials v2.0** for evidence and attestation envelopes
 - **NIST OSCAL** referenced for TOMs structure
 - **Saudi Electronic Transactions Law (Royal Decree M/18)** recognises the electronic-signature posture
@@ -57,18 +51,50 @@ Every primitive is a well-reviewed standard. No novel cryptography.
 
 ```bash
 # Install
-pip install datasitr-scc-verifier
+pip install -e .
 
-# Verify an SCC document
-scc-verify \
-  --scc path/to/scc.json \
-  --bundle sdaia-scc-v0.1.bundle \
-  --evidence path/to/evidence/ \
-  --signing-key path/to/verifier.ed25519 \
+# Generate a signing key (one-time, per deployment)
+scc-verify keygen --out ./keys/verifier.ed25519
+
+# Verify an SCC document with that key
+scc-verify verify \
+  --scc test_vectors/known_good/ksa_domestic_scc.json \
+  --signing-key ./keys/verifier.ed25519 \
   --out attestation.json
 
-# Run the test vector corpus to validate the bundle
-scc-verify --bundle sdaia-scc-v0.1.bundle --run-vectors
+# Or verify with an ephemeral key (produces a UserWarning; signatures
+# cannot be verified after the process exits)
+scc-verify verify --scc test_vectors/known_good/ksa_domestic_scc.json
+
+# Run the packaged test-vector corpus
+scc-verify run-vectors
+```
+
+The emitted attestation is **self-validated against `schemas/attestation-envelope-v1.json`** before it is written. If the envelope fails its own schema, `scc-verify verify` exits non-zero and does not emit the document.
+
+## Python API
+
+```python
+from scc_verifier import verify, validate_schema, self_validate
+import json
+
+with open("path/to/scc.json") as f:
+    scc = json.load(f)
+
+# Layer 1 only — fast, no signing
+check = validate_schema(scc)
+assert check.valid, check.errors
+
+# Full verify with a real attestation
+attestation = verify(scc)            # ephemeral key (warns)
+# or: attestation = verify(scc, signing_key=my_ed25519_private_key)
+
+# Confirm the envelope is self-consistent
+result = self_validate(attestation)
+assert result.valid, result.errors
+
+# Ship it
+print(json.dumps(attestation.to_dict(), indent=2))
 ```
 
 ## Project layout
@@ -82,17 +108,29 @@ datasitr-scc-verifier/
 ├── rules/                          # Rego rule bundle (Apache-2.0)
 │   ├── structural/
 │   ├── value/
-│   ├── reference/
-│   ├── freshness/
-│   ├── anchor/
 │   └── judgment/
 ├── test_vectors/                   # Test corpus (CC0)
 │   ├── known_good/
+│   │   ├── ksa_domestic_scc.json
+│   │   └── ksa_domestic_scc.expected.json
 │   ├── known_bad/
+│   │   ├── structurally_malformed.json          # Layer 1 FAIL (v0.1)
+│   │   ├── structurally_malformed.expected.json
+│   │   ├── missing_governing_law.json           # Layer 2 pending
+│   │   ├── missing_governing_law.expected.json
+│   │   ├── sensitive_onward_transfer.json       # Layer 2 pending
+│   │   └── sensitive_onward_transfer.expected.json
 │   └── judgment_required/
+│       ├── needs_counsel_review.json            # Layer 2 pending
+│       └── needs_counsel_review.expected.json
 ├── scc_verifier/                   # Python library (Apache-2.0)
-├── tests/
-└── docs/
+│   ├── api.py              # verify(), validate_schema(), self_validate()
+│   ├── bundle.py           # rule-bundle hashing
+│   ├── canonicalization.py # RFC 8785
+│   ├── cli.py              # scc-verify
+│   ├── schema_validator.py # Layer 1 with FormatChecker
+│   └── signing.py          # Ed25519 keypair ops
+└── tests/
 ```
 
 ## Relationship to Data Sitr Est.

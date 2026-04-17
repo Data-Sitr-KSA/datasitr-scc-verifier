@@ -26,6 +26,10 @@ dependencies = [
     "cryptography>=42.0",
     "jsonschema>=4.21",
     "jcs>=0.2.1",
+    # jsonschema's FormatChecker silently skips date-time checks if none
+    # of rfc3339-validator / strict-rfc3339 / isoduration is installed.
+    # We pin rfc3339-validator so the date-time format is actually enforced.
+    "rfc3339-validator>=0.1.4",
 ]
 
 [project.optional-dependencies]

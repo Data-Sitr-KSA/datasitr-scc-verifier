@@ -1,10 +1,12 @@
 """scc-verify CLI.
 
-v0.1 supports:
-  - Layer 1 structural validation (JSON Schema)
-  - Test vector run
+Subcommands:
+  verify         Run verification against a single SCC document.
+  run-vectors    Run the packaged test-vector corpus.
+  keygen         Generate a new Ed25519 signing keypair.
 
-v0.2 will add OPA/Rego evaluation for Layer 2 (semantic rules).
+v0.1 scope: Layer 1 structural validation + real Ed25519 attestation
+signing. Layer 2 (Rego semantic rules) lands in v0.2.
 """
 
 from __future__ import annotations
@@ -12,59 +14,20 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+import warnings
 from pathlib import Path
 
-from scc_verifier import __version__
-from scc_verifier.api import (
-    Attestation,
-    AttestationSubject,
-    CheckResult,
-    verdict_from_checks,
+from scc_verifier import __version__, self_validate, verify as verify_document
+from scc_verifier.signing import (
+    generate_keypair,
+    load_private_key,
+    save_private_key,
 )
-from scc_verifier.canonicalization import sha256_of
-from scc_verifier.schema_validator import validate_scc
 
 
-def _check_from_schema_result(result) -> CheckResult:
-    if result.valid:
-        return CheckResult(
-            id="STRUCT-001",
-            rule="has_all_mandatory_clauses_and_types",
-            layer="structural",
-            status="PASS",
-            detail="SCC document conforms to scc-canonical-v1 schema",
-        )
-    return CheckResult(
-        id="STRUCT-001",
-        rule="has_all_mandatory_clauses_and_types",
-        layer="structural",
-        status="FAIL",
-        detail="Schema validation errors: " + "; ".join(result.errors[:5]),
-    )
-
-
-def _verify_one(scc_path: Path, *, rule_bundle_id: str) -> Attestation:
-    with scc_path.open() as f:
-        scc = json.load(f)
-    schema_result = validate_scc(scc)
-    checks = (_check_from_schema_result(schema_result),)
-    subject = AttestationSubject(
-        scc_id=scc.get("scc_id", "UNKNOWN"),
-        scc_document_hash=sha256_of(scc),
-        rule_bundle_id=rule_bundle_id,
-        rule_bundle_hash="sha256:PLACEHOLDER_v0.1_NOT_YET_SIGNED",
-        ratification_status="not-yet-ratified-by-sdaia",
-        verdict=verdict_from_checks(checks),
-        checks=checks,
-    )
-    now = datetime.now(timezone.utc)
-    return Attestation(
-        id=f"urn:datasitr:attestation:{subject.scc_id}:{now.isoformat()}",
-        issuer="did:web:datasitr.com",
-        valid_from=now,
-        subject=subject,
-    )
+def _load_json(path: Path) -> dict:
+    with path.open() as f:
+        return json.load(f)
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
@@ -72,60 +35,130 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     if not scc_path.exists():
         print(f"error: SCC file not found: {scc_path}", file=sys.stderr)
         return 2
-    attestation = _verify_one(scc_path, rule_bundle_id=args.bundle_id)
-    out = attestation.to_dict()
+
+    if args.signing_key:
+        key_path = Path(args.signing_key)
+        if not key_path.exists():
+            print(f"error: signing key not found: {key_path}", file=sys.stderr)
+            return 2
+        signing_key = load_private_key(key_path)
+    else:
+        signing_key = None
+
+    scc = _load_json(scc_path)
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        attestation = verify_document(scc, signing_key=signing_key)
+        for w in captured:
+            print(f"warning: {w.message}", file=sys.stderr)
+
+    envelope = attestation.to_dict()
+
+    # Self-check: the envelope MUST validate against its own schema. This
+    # is the guard against the class of bug where the verifier emits
+    # something that fails its own published schema.
+    self_check = self_validate(attestation)
+    if not self_check.valid:
+        print(
+            "error: attestation envelope failed self-validation:\n  "
+            + "\n  ".join(self_check.errors),
+            file=sys.stderr,
+        )
+        return 3
+
     if args.out:
         with Path(args.out).open("w") as f:
-            json.dump(out, f, indent=2)
+            json.dump(envelope, f, indent=2)
         print(f"Attestation written to {args.out}")
     else:
-        print(json.dumps(out, indent=2))
+        print(json.dumps(envelope, indent=2))
+
     verdict = attestation.subject.verdict
-    summary = attestation.subject.summary
+    s = attestation.subject.summary
     print(
         f"Verdict: {verdict}  "
-        f"({summary['passed']} PASS / {summary['failed']} FAIL / "
-        f"{summary['requires_human_review']} REVIEW)",
+        f"({s['passed']} PASS / {s['failed']} FAIL / "
+        f"{s['requires_human_review']} REVIEW)",
         file=sys.stderr,
     )
     return 0 if verdict in ("PASS", "PASS_WITH_COUNSEL_ITEMS") else 1
 
 
 def _cmd_run_vectors(args: argparse.Namespace) -> int:
-    """Run all test vectors in the packaged test_vectors/ directory."""
+    """Run packaged test vectors.
+
+    Each vector's expected_verdict.json declares the expected outcome.
+    v0.1 only evaluates Layer 1, so expectations are structured as:
+        {
+          "v0_1_expected": "PASS" | "FAIL" | "PASS_WITH_COUNSEL_ITEMS",
+          ...
+        }
+    Vectors marked "pending_layer_2": true are skipped until the OPA
+    integration lands in v0.2 — they represent regulatory violations that
+    can only be caught semantically, not structurally.
+
+    Exits 0 only if every non-pending vector matches its v0_1_expected.
+    """
     vectors_root = Path(__file__).parent.parent / "test_vectors"
     categories = ("known_good", "known_bad", "judgment_required")
-    failures = []
+
+    failures: list[tuple[str, str, str, str]] = []
+    skipped: list[tuple[str, str, str]] = []
     ran = 0
+
     for cat in categories:
         for scc_file in sorted((vectors_root / cat).glob("*.json")):
-            if scc_file.name == "expected_verdict.json":
+            # Expected files follow the pattern: `<vector_basename>.expected.json`.
+            # Skip the expected files themselves.
+            if scc_file.name.endswith(".expected.json"):
                 continue
-            expected_path = scc_file.parent / "expected_verdict.json"
+            expected_path = scc_file.with_suffix("").with_suffix(".expected.json")
             if not expected_path.exists():
-                continue
-            with expected_path.open() as f:
-                expected = json.load(f)
-            attestation = _verify_one(scc_file, rule_bundle_id=args.bundle_id)
-            actual_verdict = attestation.subject.verdict
-            expected_verdict = expected.get("verdict")
-            # v0.1 only evaluates Layer 1 — so "known_bad" vectors that fail
-            # on Layer-2 rules (not yet implemented) will currently verify
-            # structurally PASS. We report this as EXPECTED_LAYER_2 for
-            # transparency rather than hiding it.
-            if actual_verdict == expected_verdict:
-                print(f"  PASS  {cat}/{scc_file.name}  → {actual_verdict}")
-            else:
-                note = ""
-                if cat == "known_bad":
-                    note = "  (expected FAIL — Layer 2 rules land in v0.2)"
                 print(
-                    f"  DIFF  {cat}/{scc_file.name}  "
-                    f"→ {actual_verdict}  (expected {expected_verdict}){note}"
+                    f"  WARN  {cat}/{scc_file.name}  — no expected file at {expected_path.name}; skipping"
                 )
-                failures.append((cat, scc_file.name, actual_verdict, expected_verdict))
+                continue
+            expected = _load_json(expected_path)
+
+            if expected.get("pending_layer_2"):
+                reason = expected.get("pending_reason", "layer 2 not yet wired")
+                skipped.append((cat, scc_file.name, reason))
+                print(f"  SKIP  {cat}/{scc_file.name}  — {reason}")
+                continue
+
+            # v0.1-honest expectation, falling back to 'verdict' for forward compat.
+            want = expected.get("v0_1_expected") or expected.get("verdict")
+            scc = _load_json(scc_file)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                attestation = verify_document(scc)
+            got = attestation.subject.verdict
+
+            if got == want:
+                print(f"  PASS  {cat}/{scc_file.name}  → {got}")
+            else:
+                print(f"  FAIL  {cat}/{scc_file.name}  → {got}  (expected {want})")
+                failures.append((cat, scc_file.name, got, want or "<unset>"))
             ran += 1
-    print(f"\nRan {ran} vectors. {len(failures)} divergences (some expected in v0.1).")
+
+    print(
+        f"\nRan {ran} vectors. {len(failures)} divergences. {len(skipped)} skipped (layer 2 pending)."
+    )
+    return 0 if not failures else 1
+
+
+def _cmd_keygen(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    if out.exists() and not args.force:
+        print(
+            f"error: {out} already exists; pass --force to overwrite",
+            file=sys.stderr,
+        )
+        return 2
+    key = generate_keypair()
+    save_private_key(key, out)
+    print(f"Wrote Ed25519 private key to {out} (mode 0600)")
+    print(f"Guard this file. Do not commit it. See .gitignore for *.ed25519.")
     return 0
 
 
@@ -140,19 +173,21 @@ def main(argv: list[str] | None = None) -> int:
     p_verify = sub.add_parser("verify", help="Verify a single SCC document")
     p_verify.add_argument("--scc", required=True, help="Path to SCC JSON document")
     p_verify.add_argument(
-        "--bundle-id",
-        default="sdaia-scc-v0.1-2026-04-17",
-        help="Rule bundle identifier (v0.1 default)",
+        "--signing-key",
+        help="Path to an Ed25519 private key (PEM). If omitted, an ephemeral key is used.",
     )
-    p_verify.add_argument("--out", help="Write attestation to this path")
+    p_verify.add_argument("--out", help="Write attestation JSON to this path")
     p_verify.set_defaults(func=_cmd_verify)
 
     p_run = sub.add_parser("run-vectors", help="Run the packaged test-vector corpus")
-    p_run.add_argument(
-        "--bundle-id",
-        default="sdaia-scc-v0.1-2026-04-17",
-    )
     p_run.set_defaults(func=_cmd_run_vectors)
+
+    p_key = sub.add_parser("keygen", help="Generate an Ed25519 signing keypair")
+    p_key.add_argument("--out", required=True, help="Output path for the private key")
+    p_key.add_argument(
+        "--force", action="store_true", help="Overwrite existing file at --out"
+    )
+    p_key.set_defaults(func=_cmd_keygen)
 
     args = parser.parse_args(argv)
     return args.func(args)

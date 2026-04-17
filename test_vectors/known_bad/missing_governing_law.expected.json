@@ -1,0 +1,11 @@
+{
+  "verdict": "FAIL",
+  "pending_layer_2": true,
+  "pending_reason": "VAL-GOV-LAW and VAL-DISPUTE-FORUM are Rego semantic rules; they require the OPA runtime integration landing in v0.2. The SCC is structurally valid (passes Layer 1), so v0.1 cannot catch this semantically-wrong SCC. Do not remove this vector — it is the canonical regression test for the Layer 2 wiring in v0.2.",
+  "v0_1_behavior_note": "In v0.1 this vector would produce PASS because Layer 2 is not wired. Skipped by run-vectors until v0.2.",
+  "required_check_ids_fail_v1_0": [
+    "VAL-GOV-LAW",
+    "VAL-DISPUTE-FORUM"
+  ],
+  "regulatory_violation": "SCC declares State of California as governing law and California courts as dispute forum. A cross-border transfer to a US-based importer with foreign governing law does not satisfy SDAIA's Article 29 requirements, regardless of other safeguards."
+}

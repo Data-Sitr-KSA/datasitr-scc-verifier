@@ -1,16 +1,13 @@
-"""Smoke tests for the Layer 1 JSON Schema validator.
+"""Layer 1 structural validation regression suite.
 
-These tests are deliberately minimal. The real coverage comes from the
-test-vector corpus under ../test_vectors/ which is run end-to-end by the
-CLI and by tests/test_vectors_roundtrip.py.
+These tests are the floor. They cover the JSON Schema boundary behaviors
+that CI and future contributors must not accidentally weaken.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-
-import pytest
 
 from scc_verifier.schema_validator import validate_scc
 
@@ -36,12 +33,12 @@ def test_known_bad_missing_governing_law_still_passes_schema() -> None:
     """
     scc = _load(VECTORS / "known_bad" / "missing_governing_law.json")
     result = validate_scc(scc)
-    assert result.valid, f"schema should pass; semantic rules handle the failure"
+    assert result.valid, "schema should pass; semantic rules handle the failure"
 
 
 def test_malformed_document_fails_schema() -> None:
-    """Synthesise a truly structurally-invalid document."""
-    scc = {"scc_id": "MALFORMED"}
+    """Catches a document missing every mandatory clause."""
+    scc = _load(VECTORS / "known_bad" / "structurally_malformed.json")
     result = validate_scc(scc)
     assert not result.valid
     assert len(result.errors) > 0
@@ -78,5 +75,35 @@ def test_sensitive_category_enum_enforced() -> None:
 def test_response_window_over_30_days_fails() -> None:
     scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
     scc["data_subject_rights"]["response_window_days"] = 45
+    result = validate_scc(scc)
+    assert not result.valid
+
+
+# Format-checking regressions. Without an explicit FormatChecker, jsonschema
+# treats `format: date` and `format: date-time` as informational and lets
+# bad values pass. These tests lock the FormatChecker integration.
+
+
+def test_malformed_date_fails() -> None:
+    """`term.effective_date` is declared as `format: date`. A non-date
+    string must be rejected."""
+    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc["term"]["effective_date"] = "not-a-date"
+    result = validate_scc(scc)
+    assert not result.valid, "malformed date must fail validation"
+
+
+def test_malformed_datetime_fails() -> None:
+    """`signatures.exporter.signed_at` is declared as `format: date-time`.
+    A non-timestamp string must be rejected."""
+    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc["signatures"]["exporter"]["signed_at"] = "also-not-a-datetime"
+    result = validate_scc(scc)
+    assert not result.valid, "malformed date-time must fail validation"
+
+
+def test_tra_expiry_date_format_enforced() -> None:
+    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc["annex_a_tra"]["expires_at"] = "2027-13-45"  # impossible date
     result = validate_scc(scc)
     assert not result.valid

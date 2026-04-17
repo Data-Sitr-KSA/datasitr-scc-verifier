@@ -59,8 +59,10 @@
           "items": { "$ref": "#/$defs/check_result" }
         },
         "evidence_manifest_hash": {
-          "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$"
+          "oneOf": [
+            { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            { "type": "null" }
+          ]
         },
         "prev_attestation_hash": {
           "oneOf": [

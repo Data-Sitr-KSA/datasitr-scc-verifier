@@ -1,0 +1,5 @@
+{
+  "verdict": "FAIL",
+  "v0_1_expected": "FAIL",
+  "notes": "Purely Layer 1 failure: scc_id does not match the required pattern, parties.importer is missing, and every mandatory top-level clause after 'parties' is absent. This vector catches a regression in JSON Schema validation and is the simplest end-to-end negative test that v0.1 must fail on. Unlike the semantic-failure vectors, this one is layer-1-only and should always produce FAIL regardless of v0.2 rule additions."
+}

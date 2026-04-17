@@ -1,0 +1,13 @@
+{
+  "scc_id": "NOT-A-VALID-ID-PATTERN",
+  "rule_bundle_required": "sdaia-scc-v0.1-2026-04-17",
+  "parties": {
+    "exporter": {
+      "legal_name": "Example KSA Enterprise Ltd.",
+      "cr_number": "1010000000",
+      "registered_address": "Riyadh, Kingdom of Saudi Arabia",
+      "country": "SA",
+      "role": "CONTROLLER"
+    }
+  }
+}

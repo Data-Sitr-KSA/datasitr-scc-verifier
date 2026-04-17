@@ -1,0 +1,18 @@
+{
+  "verdict": "PASS_WITH_COUNSEL_ITEMS",
+  "v0_1_expected": "PASS",
+  "notes": "Valid Saudi-domestic SCC (controller and processor both in KSA, no Article 18 sensitive categories, proper notification windows, correct governing law). In v0.1 this produces a PASS based on Layer 1 (schema) alone. When OPA integration lands in v0.2 and judgment rules run, this will produce PASS_WITH_COUNSEL_ITEMS because liability and government-access clauses will be flagged for counsel review.",
+  "required_check_ids_pass_v1_0": [
+    "STRUCT-001",
+    "VAL-GOV-LAW",
+    "VAL-DISPUTE-FORUM",
+    "VAL-BREACH-EXPORTER",
+    "VAL-BREACH-SDAIA",
+    "VAL-SENSITIVE-ROUTE"
+  ],
+  "required_check_ids_human_review_v1_0": [
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ]
+}

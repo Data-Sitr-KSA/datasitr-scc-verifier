@@ -1,0 +1,13 @@
+{
+  "verdict": "PASS_WITH_COUNSEL_ITEMS",
+  "pending_layer_2": true,
+  "pending_reason": "JUDGE-LIAB-001 is a judgment-flagged Rego rule; it requires the OPA runtime integration landing in v0.2. The SCC is structurally valid (passes Layer 1), so v0.1 evaluates it as PASS rather than flagging the liability cap for counsel review. Do not remove this vector — it is the canonical regression test for judgment-rule behavior in v0.2.",
+  "v0_1_behavior_note": "In v0.1 this vector would produce PASS because judgment flagging happens in Layer 2. Skipped by run-vectors until v0.2.",
+  "required_check_ids_human_review_v1_0": [
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ],
+  "counsel_focus_on_v1_0": "liability.cap_amount_sar",
+  "regulatory_posture": "Structurally valid SCC with a liability cap of 1 SAR. Determining 'commercial reasonableness' of a liability cap is an irreducibly legal judgment. The verifier's job is to flag it for counsel; it should not decide it."
+}
