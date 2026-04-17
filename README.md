@@ -1,5 +1,12 @@
 # datasitr-scc-verifier
 
+[![CI](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://img.shields.io/badge/OpenSSF_Scorecard-configured-lightgrey?logo=opensourcesecurity)](.github/workflows/scorecard.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
+[![SDAIA SCC v1-2024-09-02](https://img.shields.io/badge/SDAIA_SCC-v1--2024--09--02-informational)](schemas/scc-canonical-v1.json)
+
 **Machine-verifiable compliance for SDAIA Standard Contractual Clauses under the Saudi Personal Data Protection Law (PDPL).**
 
 A deterministic, transparent, cryptographically-attestable verifier that produces signed verdicts about the structural, value-bound, reference-integrity, freshness, and regulatory-anchor requirements of the SDAIA SCC template (issued 2 September 2024) and the Regulation on Personal Data Transfer Outside the Kingdom (1 September 2024).
@@ -7,6 +14,8 @@ A deterministic, transparent, cryptographically-attestable verifier that produce
 The verifier honestly flags judgment-bound clauses (liability reasonableness, government-access warranties, etc.) as requiring human review. It does not replace Saudi-licensed counsel; it focuses counsel time on the clauses that actually require legal judgment.
 
 This is a reference implementation. It is offered to SDAIA for ratification and to the wider Saudi data-protection community as a public good.
+
+> **Note on the OpenSSF Scorecard badge:** the workflow is configured and runs on every push to `main`; it uploads SARIF to the Security tab. The live Scorecard badge (fed by `api.securityscorecards.dev`) activates automatically once the repository is made public at the Week-6 counsel-review gate. Until then, the placeholder badge links to the workflow definition so reviewers can inspect the configured security posture directly.
 
 ## Status
 

@@ -1,0 +1,57 @@
+# CodeQL — static analysis (SAST) for Python.
+#
+# Runs GitHub's CodeQL engine against the Python source in scc_verifier/.
+# Free on public repos; on private repos it requires GitHub Advanced
+# Security, which this project does not use. The workflow is still safe
+# to keep enabled while private — CodeQL will no-op on private repos
+# without GHAS rather than fail the workflow.
+#
+# Why CodeQL on top of ruff + mypy:
+#   - ruff catches style and trivially-wrong patterns.
+#   - mypy catches type mismatches.
+#   - CodeQL catches semantic security issues (injection, SSRF, insecure
+#     deserialization, timing-sensitive comparison, etc.) that neither
+#     ruff nor mypy will ever flag.
+#
+# Scorecard weight: CodeQL presence materially improves the SAST score
+# in OpenSSF Scorecard. Combined with the scorecard.yml workflow, this
+# covers the two highest-signal Scorecard checks for a Python project.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Thursday 04:23 UTC — staggered off scorecard.yml (Monday) so the
+    # two security workflows share no scheduling pressure.
+    - cron: "23 4 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: CodeQL analysis (python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # `security-and-quality` is the wider query suite; picks up
+          # standard security queries plus code-quality issues.
+          queries: security-and-quality
+
+      - name: Perform analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"

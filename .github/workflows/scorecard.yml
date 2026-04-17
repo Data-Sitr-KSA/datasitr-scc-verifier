@@ -1,0 +1,93 @@
+# OpenSSF Scorecard — security-hygiene scoring.
+#
+# Runs on push to main and weekly. Evaluates the repository against the
+# ~20 checks maintained by the OpenSSF Scorecard project (branch
+# protection, code review, CI tests, SAST, signed releases, pinned
+# dependencies, dangerous workflow patterns, token permissions, license,
+# dependabot, etc.).
+#
+# Results:
+#   - SARIF uploaded to the GitHub code-scanning tab (Security → Code
+#     scanning alerts). Free on public repos.
+#   - When `publish_results: true`, results are also published to the
+#     OpenSSF Scorecard public API, which feeds the live badge at
+#     api.securityscorecards.dev.
+#
+# Visibility gate: Scorecard's public-publishing path only works for
+# PUBLIC repositories. While `datasitr-scc-verifier` is still private
+# (pre-Week-6 counsel-review gate), `publish_results` stays false and
+# SARIF upload is limited to CI artifacts; the workflow still runs and
+# produces a local scorecard so regressions are caught pre-flip.
+#
+# At the Week-6 public-flip, set `publish_results: true` and re-enable
+# SARIF upload to code-scanning in the same commit. The README badge
+# lights up automatically once OSSF indexes the first public run.
+#
+# Reference: https://github.com/ossf/scorecard-action
+
+name: Scorecard
+
+on:
+  push:
+    branches: [main]
+  branch_protection_rule:
+  schedule:
+    # Monday 03:17 UTC — off-minute to avoid the fleet-wide :00 spike on
+    # free runners. The exact minute doesn't matter; picking something
+    # non-round is polite to shared infrastructure.
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+# Top-level: deny-all. Individual jobs widen permissions as needed.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+
+    # Scorecard needs these scopes:
+    #   security-events: write  — upload SARIF to code-scanning
+    #   id-token:        write  — OIDC token for publish_results
+    #   contents:        read   — read repo content
+    #   actions:         read   — inspect workflow files
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@v2.4.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Flip these two to `true` at the public-flip. Until then:
+          #   publish_results=false: no API publish (requires public repo)
+          #   repo_token uses default (GITHUB_TOKEN) which is sufficient
+          #     for inspecting this repo's own state.
+          publish_results: false
+
+      # Persist the SARIF as a build artifact so a reviewer can download
+      # and inspect it locally even while the repo is private.
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 14
+
+      # Only upload to code-scanning when this is a push event on main.
+      # On branch_protection_rule and schedule, the SARIF still exists as
+      # an artifact but doesn't clutter the Security tab on every cron.
+      - name: Upload to code-scanning
+        if: github.event_name == 'push'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
