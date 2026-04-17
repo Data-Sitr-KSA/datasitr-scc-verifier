@@ -25,6 +25,7 @@ See schemas/attestation-envelope-v1.json for the envelope format.
 from __future__ import annotations
 
 import base64
+import hashlib
 import warnings
 from pathlib import Path
 
@@ -34,12 +35,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
-    PrivateFormat,
     NoEncryption,
+    PrivateFormat,
     PublicFormat,
     load_pem_private_key,
 )
-import hashlib
 
 
 def generate_keypair() -> Ed25519PrivateKey:

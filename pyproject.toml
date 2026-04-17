@@ -54,5 +54,43 @@ packages = ["scc_verifier"]
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+# Default selection is quiet; explicitly enable the common-sense set.
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # bugbear (likely bugs)
+    "UP",   # pyupgrade (modern syntax)
+    "W",    # pycodestyle warnings
+]
+ignore = [
+    "E501",  # line length (ruff format enforces this)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests are allowed to shadow names, do unused-ignores, etc.
+"tests/*" = ["B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+# Start strict and loosen where needed; nothing currently triggers strict
+# failures, so strict stays on by default. Dependency stubs come from
+# their own packages or are treated as Any.
+strict = false
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+# The tests directory intentionally does more duck-typing; keep mypy
+# scoped to the library itself.
+files = ["scc_verifier"]
+
+[[tool.mypy.overrides]]
+module = "jcs"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

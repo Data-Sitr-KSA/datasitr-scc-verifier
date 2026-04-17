@@ -13,10 +13,7 @@ import json
 import warnings
 from pathlib import Path
 
-import pytest
-
 from scc_verifier import self_validate, verify
-
 
 VECTORS = Path(__file__).parent.parent / "test_vectors"
 
@@ -38,8 +35,7 @@ def test_known_good_attestation_self_validates() -> None:
     attestation = _verify_with_ephemeral(scc)
     result = self_validate(attestation)
     assert result.valid, (
-        "attestation envelope must validate against its own schema; "
-        f"errors: {result.errors}"
+        f"attestation envelope must validate against its own schema; errors: {result.errors}"
     )
 
 

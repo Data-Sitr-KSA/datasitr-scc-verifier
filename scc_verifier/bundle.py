@@ -100,14 +100,12 @@ def compute_bundle_hash(root: Path = REPO_ROOT) -> str:
     """
     files = _bundle_files(root)
     if not files:
-        raise RuntimeError(
-            f"bundle is empty under {root}; refusing to produce a meaningless hash"
-        )
+        raise RuntimeError(f"bundle is empty under {root}; refusing to produce a meaningless hash")
     outer = hashlib.sha256()
     for path in files:
         rel = path.relative_to(root).as_posix()
         inner = hashlib.sha256(path.read_bytes()).hexdigest()
-        outer.update(f"{rel}\n{inner}\n".encode("utf-8"))
+        outer.update(f"{rel}\n{inner}\n".encode())
     return f"sha256:{outer.hexdigest()}"
 
 

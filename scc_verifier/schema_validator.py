@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import jsonschema
     from jsonschema import Draft202012Validator, FormatChecker
 except ImportError as e:  # pragma: no cover
     raise ImportError(
@@ -34,7 +33,8 @@ class SchemaValidationResult:
 
 def _load(path: Path) -> dict[str, Any]:
     with path.open() as f:
-        return json.load(f)
+        loaded: dict[str, Any] = json.load(f)
+    return loaded
 
 
 def load_scc_schema() -> dict[str, Any]:

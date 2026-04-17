@@ -60,8 +60,15 @@ Every primitive is a well-reviewed standard. No novel cryptography.
 ## Quick start
 
 ```bash
-# Install
+# Install the OPA binary (required for Layer 2)
+brew install opa   # or see "Runtime requirement" above for Linux / Docker
+
+# Install the verifier
 pip install -e .
+
+# Inspect the active rule bundle (useful for reviewers)
+scc-verify bundle info
+scc-verify bundle info --format json --verbose
 
 # Generate a signing key (one-time, per deployment)
 scc-verify keygen --out ./keys/verifier.ed25519
@@ -81,6 +88,27 @@ scc-verify run-vectors
 ```
 
 The emitted attestation is **self-validated against `schemas/attestation-envelope-v1.json`** before it is written. If the envelope fails its own schema, `scc-verify verify` exits non-zero and does not emit the document.
+
+## Development
+
+```bash
+# Install dev tools
+pip install -e ".[dev]"
+
+# Quality gates (all required in CI)
+ruff check scc_verifier tests
+ruff format --check scc_verifier tests
+mypy                                  # config in pyproject.toml
+pytest -v
+
+# CI runs the above across Python 3.11, 3.12, 3.13 on Ubuntu + macOS.
+# A second CI job explicitly runs without OPA installed to lock the
+# graceful-degradation contract.
+```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for responsible-disclosure instructions, the in-scope / out-of-scope list, and the cryptographic primitive inventory. Never file security issues publicly.
 
 ## Python API
 

@@ -4,9 +4,10 @@ Subcommands:
   verify         Run verification against a single SCC document.
   run-vectors    Run the packaged test-vector corpus.
   keygen         Generate a new Ed25519 signing keypair.
+  bundle info    Show the active rule-bundle identity, hash, and manifest.
 
-v0.1 scope: Layer 1 structural validation + real Ed25519 attestation
-signing. Layer 2 (Rego semantic rules) lands in v0.2.
+v0.2 scope: Layer 1 structural validation + Layer 2 Rego rule evaluation
+via the OPA binary + real Ed25519 attestation signing.
 """
 
 from __future__ import annotations
@@ -17,7 +18,14 @@ import sys
 import warnings
 from pathlib import Path
 
-from scc_verifier import __version__, self_validate, verify as verify_document
+from scc_verifier import __version__, self_validate
+from scc_verifier import verify as verify_document
+from scc_verifier.bundle import (
+    BUNDLE_BUILD_DATE,
+    BUNDLE_ID,
+    bundle_manifest,
+    compute_bundle_hash,
+)
 from scc_verifier.signing import (
     generate_keypair,
     load_private_key,
@@ -27,7 +35,8 @@ from scc_verifier.signing import (
 
 def _load_json(path: Path) -> dict:
     with path.open() as f:
-        return json.load(f)
+        loaded: dict = json.load(f)
+    return loaded
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
@@ -154,6 +163,44 @@ def _cmd_run_vectors(args: argparse.Namespace) -> int:
     return 0 if not failures else 1
 
 
+def _cmd_bundle_info(args: argparse.Namespace) -> int:
+    """Print the bundle identity, hash, and (optionally) the file manifest.
+
+    This is the command a reviewer runs first when they want to confirm
+    they are looking at the same bytes the attestation was produced from.
+    Output is JSON when `--format json`, human-readable otherwise. Both
+    formats contain the same fields — the JSON form is for CI and the
+    human form for eyeballs.
+    """
+    manifest = bundle_manifest()
+    bundle_hash = compute_bundle_hash()
+
+    if args.format == "json":
+        payload: dict[str, object] = {
+            "bundle_id": BUNDLE_ID,
+            "bundle_build_date": BUNDLE_BUILD_DATE,
+            "bundle_hash": bundle_hash,
+            "file_count": len(manifest),
+        }
+        if args.verbose:
+            payload["manifest"] = manifest
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    print(f"Bundle ID:         {BUNDLE_ID}")
+    print(f"Bundle build date: {BUNDLE_BUILD_DATE}")
+    print(f"Bundle hash:       {bundle_hash}")
+    print(f"File count:        {len(manifest)}")
+    if args.verbose:
+        print()
+        print("Manifest (relative path → SHA-256 of content):")
+        for rel, h in sorted(manifest.items()):
+            print(f"  {h}  {rel}")
+    else:
+        print("(pass --verbose to print the per-file manifest)")
+    return 0
+
+
 def _cmd_keygen(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if out.exists() and not args.force:
@@ -165,7 +212,7 @@ def _cmd_keygen(args: argparse.Namespace) -> int:
     key = generate_keypair()
     save_private_key(key, out)
     print(f"Wrote Ed25519 private key to {out} (mode 0600)")
-    print(f"Guard this file. Do not commit it. See .gitignore for *.ed25519.")
+    print("Guard this file. Do not commit it. See .gitignore for *.ed25519.")
     return 0
 
 
@@ -191,13 +238,34 @@ def main(argv: list[str] | None = None) -> int:
 
     p_key = sub.add_parser("keygen", help="Generate an Ed25519 signing keypair")
     p_key.add_argument("--out", required=True, help="Output path for the private key")
-    p_key.add_argument(
-        "--force", action="store_true", help="Overwrite existing file at --out"
-    )
+    p_key.add_argument("--force", action="store_true", help="Overwrite existing file at --out")
     p_key.set_defaults(func=_cmd_keygen)
 
+    p_bundle = sub.add_parser(
+        "bundle",
+        help="Inspect the rule bundle (ID, hash, manifest).",
+    )
+    bundle_sub = p_bundle.add_subparsers(dest="bundle_cmd", required=True)
+    p_bundle_info = bundle_sub.add_parser(
+        "info",
+        help="Print the bundle ID, hash, and file manifest.",
+    )
+    p_bundle_info.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Output format (default: human).",
+    )
+    p_bundle_info.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Include the full per-file manifest.",
+    )
+    p_bundle_info.set_defaults(func=_cmd_bundle_info)
+
     args = parser.parse_args(argv)
-    return args.func(args)
+    exit_code: int = args.func(args)
+    return exit_code
 
 
 if __name__ == "__main__":

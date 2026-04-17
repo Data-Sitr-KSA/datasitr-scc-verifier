@@ -14,12 +14,11 @@ import pytest
 
 from scc_verifier import rego_evaluator
 from scc_verifier.rego_evaluator import (
-    OpaNotFoundError,
     RULE_REGISTRY,
+    OpaNotFoundError,
     evaluate_rules,
     is_opa_available,
 )
-
 
 VECTORS = Path(__file__).parent.parent / "test_vectors"
 

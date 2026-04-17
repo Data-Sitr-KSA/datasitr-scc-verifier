@@ -1,0 +1,80 @@
+name: Bug report
+description: The verifier did something wrong — crashed, produced an incorrect verdict, or behaved differently from the documented contract.
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **If this is a security issue**, please do not file it here — see [SECURITY.md](../SECURITY.md) for private reporting instructions.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of `scc-verify --version` or the commit SHA you tested against.
+      placeholder: "scc-verify 0.2.0 (commit 56cf346)"
+    validations:
+      required: true
+
+  - type: input
+    id: opa
+    attributes:
+      label: OPA version
+      description: Output of `opa version`, or "not installed" if running without OPA.
+      placeholder: "1.15.2"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version and OS
+      placeholder: "Python 3.12 on Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The exact commands, test vector path, or Python snippet that triggers the bug. Include the SCC document if it's not one of the shipped test vectors.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What the verifier should have done, with a reference to the rule ID, schema field, or attestation-envelope section you expect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened — verdict, error message, attestation contents.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: attestation
+    attributes:
+      label: Attestation output (if applicable)
+      description: If `scc-verify verify` ran, paste the attestation JSON (or a redacted version) here.
+      render: json
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I have read the [README](../README.md) and confirmed I'm using the current shipped API.
+          required: true
+        - label: I have run `scc-verify run-vectors` and it produces an unexpected result for a shipped vector, OR the bug is reproducible with the minimal repro in this report.
+          required: true

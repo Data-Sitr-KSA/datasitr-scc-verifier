@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/security/advisories/new
+    about: Do not file security issues publicly. Use GitHub private vulnerability reporting, or email security@datasitr.com. See SECURITY.md.
+  - name: Governance and general questions
+    url: https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/discussions
+    about: For general questions about the verifier, its governance, or Saudi PDPL interpretation, please use GitHub Discussions rather than issues.

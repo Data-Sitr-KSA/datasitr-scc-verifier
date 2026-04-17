@@ -1,0 +1,26 @@
+# CODEOWNERS for datasitr-scc-verifier
+#
+# This file determines default reviewers for pull requests. It does not
+# block merges on its own — branch protection rules (configured separately
+# in the GitHub UI) are what enforce review requirements.
+#
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: the repository owner reviews everything until a team exists.
+*                       @Data-Sitr
+
+# Rule bundle changes affect regulatory interpretation. Rule file edits should
+# also trigger a counsel review signal per CONTRIBUTING.md, but that review
+# happens off-platform; the CODEOWNERS entry just ensures the founder sees
+# any rule diff before merge.
+/rules/                 @Data-Sitr
+/schemas/               @Data-Sitr
+
+# Test vectors are part of the reproducibility contract and flow into the
+# bundle hash. Changes here must be intentional.
+/test_vectors/          @Data-Sitr
+
+# CI and release plumbing.
+/.github/               @Data-Sitr
+/pyproject.toml         @Data-Sitr
+/CHANGELOG.md           @Data-Sitr

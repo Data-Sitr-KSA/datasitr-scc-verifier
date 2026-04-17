@@ -14,7 +14,7 @@ import json
 from typing import Any
 
 try:
-    import jcs  # type: ignore
+    import jcs
 except ImportError:  # pragma: no cover
     jcs = None
 
@@ -28,7 +28,8 @@ def canonicalize(obj: Any) -> bytes:
     ratification.
     """
     if jcs is not None:
-        return jcs.canonicalize(obj)
+        result: bytes = jcs.canonicalize(obj)
+        return result
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )

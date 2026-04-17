@@ -37,6 +37,7 @@ def test_verify_exits_zero_on_known_good(tmp_path) -> None:
     assert exit_code == 0
     assert out.exists()
     import json
+
     with out.open() as f:
         envelope = json.load(f)
     assert envelope["credentialSubject"]["verdict"] == "PASS_WITH_COUNSEL_ITEMS"

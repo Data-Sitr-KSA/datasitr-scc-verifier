@@ -1,0 +1,80 @@
+name: Rule proposal
+description: Propose a new rule or a change to an existing rule in the rule bundle. Governance follows CONTRIBUTING.md.
+title: "[rule] "
+labels: ["rule-proposal", "needs-counsel"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Rule-bundle changes affect how SCCs are evaluated under Saudi PDPL interpretation. Proposals go through the governance process in [CONTRIBUTING.md](../CONTRIBUTING.md):
+
+        1. Written proposal (this issue).
+        2. Test vector that fails before the fix and passes after.
+        3. Saudi-counsel review for anything touching legal interpretation.
+        4. 30-day public comment window.
+        5. SDAIA notification.
+        6. Signed release with a new `sdaia-scc-vX.Y-YYYY-MM-DD` bundle ID.
+
+  - type: input
+    id: rule_id
+    attributes:
+      label: Proposed rule ID
+      description: "Format: `<LAYER>-<SHORT>-<NNN>`. Example: `VAL-RETENTION-BOUND`, `REF-TRA-CURRENT`, `JUDGE-ONWARD-001`."
+      placeholder: "VAL-EXAMPLE-001"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Rule layer
+      options:
+        - structural
+        - value
+        - reference
+        - evidence
+        - freshness
+        - anchor
+        - judgment
+    validations:
+      required: true
+
+  - type: textarea
+    id: regulatory_basis
+    attributes:
+      label: Regulatory basis
+      description: Cite the specific PDPL article, Data Transfer Regulations clause, Risk Assessment Guideline section, or SDAIA SCC template item this rule encodes. Rules without a cited regulatory anchor will not be accepted.
+      placeholder: "Data Transfer Regulations 2024-09-01, Article 12: Risk assessment timing requirements."
+    validations:
+      required: true
+
+  - type: textarea
+    id: rule_logic
+    attributes:
+      label: Rule logic (plain English first)
+      description: Describe what the rule checks before showing Rego. Describe what a PASS, FAIL, and (if applicable) REQUIRES_HUMAN_REVIEW verdict means.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rego
+    attributes:
+      label: Draft Rego
+      description: If you have a Rego draft, paste it here. Rego v1 syntax required (OPA ≥ 1.0).
+      render: rego
+
+  - type: textarea
+    id: test_vectors
+    attributes:
+      label: Test vectors
+      description: Describe the known-good, known-bad, and (if judgment-bound) judgment-required vectors this rule requires. A rule cannot merge without accompanying vectors.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: judgment
+    attributes:
+      label: Is this a judgment-bound rule?
+      description: If the rule requires counsel opinion on commercial reasonableness, legal adequacy, or regulatory ambiguity, check the box and the rule will emit REQUIRES_HUMAN_REVIEW rather than a verdict.
+      options:
+        - label: Yes — this rule flags a clause for human review and does not attempt to decide it.

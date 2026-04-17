@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 from scc_verifier.bundle import (
-    BUNDLE_GLOBS,
     BUNDLE_ID,
     bundle_manifest,
     compute_bundle_hash,
@@ -75,6 +74,7 @@ def test_bundle_id_does_not_conflate_with_build_date() -> None:
     previously used the build date (2026-04-17), which semantically
     misrepresents when the encoded regulations were published."""
     from scc_verifier.bundle import BUNDLE_BUILD_DATE
+
     assert BUNDLE_BUILD_DATE not in BUNDLE_ID, (
         "Build date must not appear in BUNDLE_ID; they are separate concerns"
     )

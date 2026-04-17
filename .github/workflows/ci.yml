@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Single-flight per PR to avoid race conditions on bundle-hash tests.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.python-version }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install OPA (linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          OPA_VERSION="v1.15.2"
+          curl -fsSL -o /usr/local/bin/opa \
+            "https://openpolicyagent.org/downloads/${OPA_VERSION}/opa_linux_amd64_static"
+          chmod +x /usr/local/bin/opa
+          opa version
+
+      - name: Install OPA (macos)
+        if: runner.os == 'macOS'
+        run: |
+          brew install opa
+          opa version
+
+      - name: Install package + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check scc_verifier tests
+
+      - name: Ruff format check
+        run: ruff format --check scc_verifier tests
+
+      - name: Mypy type check
+        run: mypy scc_verifier --ignore-missing-imports
+
+      - name: Pytest
+        run: pytest -v --tb=short
+
+      - name: End-to-end smoke — verify + self-validate + run-vectors
+        run: |
+          set -euo pipefail
+          # Verify against the known-good vector and inspect the attestation.
+          scc-verify verify \
+            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --out /tmp/attestation.json
+          python -c "
+          import json, sys
+          from scc_verifier.schema_validator import validate_attestation_envelope
+          env = json.load(open('/tmp/attestation.json'))
+          r = validate_attestation_envelope(env)
+          assert r.valid, f'self-validation failed: {r.errors}'
+          subj = env['credentialSubject']
+          assert subj['verdict'] == 'PASS_WITH_COUNSEL_ITEMS', subj['verdict']
+          assert env['proof']['proofValue'].startswith('ed25519:'), env['proof']
+          print(f\"OK: verdict={subj['verdict']}, checks={len(subj['checks'])}\")
+          "
+          # Run the full vector corpus.
+          scc-verify run-vectors
+
+      - name: Test-vector corpus contract (exit 0 on 0 divergences)
+        run: scc-verify run-vectors
+
+  # Separate job: confirm the verifier still functions without OPA installed.
+  # This locks the graceful-degradation contract (verify emits Layer-1-only
+  # attestations with a UserWarning instead of crashing).
+  test-without-opa:
+    name: test (no OPA installed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package + dev deps (no OPA)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Confirm OPA is absent
+        run: |
+          if command -v opa >/dev/null 2>&1; then
+            echo "UNEXPECTED: opa is installed" && exit 1
+          fi
+          echo "Confirmed: no opa on PATH"
+
+      - name: Pytest (Rego tests should auto-skip)
+        run: pytest -v --tb=short
+
+      - name: Verify still emits a Layer-1-only attestation
+        run: |
+          set -euo pipefail
+          # UserWarning is expected but must not cause a non-zero exit.
+          # PYTHONWARNINGS=error would flip them to errors, so we leave it unset.
+          scc-verify verify \
+            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --out /tmp/attestation.json
+          python -c "
+          import json
+          env = json.load(open('/tmp/attestation.json'))
+          subj = env['credentialSubject']
+          # Without OPA, verdict is PASS (Layer 1 pass, Layer 2 all NOT_APPLICABLE).
+          assert subj['verdict'] == 'PASS', subj['verdict']
+          na = [c for c in subj['checks'] if c['status'] == 'NOT_APPLICABLE']
+          assert na, 'expected NOT_APPLICABLE entries when OPA is absent'
+          print(f\"OK: Layer-1-only verdict={subj['verdict']}, {len(na)} NOT_APPLICABLE checks\")
+          "

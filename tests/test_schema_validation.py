@@ -11,7 +11,6 @@ from pathlib import Path
 
 from scc_verifier.schema_validator import validate_scc
 
-
 VECTORS = Path(__file__).parent.parent / "test_vectors"
 
 

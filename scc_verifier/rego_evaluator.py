@@ -131,9 +131,7 @@ def find_opa() -> str:
         path = Path(env_bin)
         if path.is_file() and os.access(path, os.X_OK):
             return str(path)
-        raise OpaNotFoundError(
-            f"SCC_OPA_BIN={env_bin!r} is set but is not an executable file."
-        )
+        raise OpaNotFoundError(f"SCC_OPA_BIN={env_bin!r} is set but is not an executable file.")
     found = shutil.which("opa")
     if found:
         return found
@@ -244,11 +242,10 @@ def _extract_result(raw: dict[str, Any], query: str) -> dict[str, Any]:
     expression's value.
     """
     try:
-        return raw["result"][0]["expressions"][0]["value"]
+        value: dict[str, Any] = raw["result"][0]["expressions"][0]["value"]
     except (KeyError, IndexError, TypeError) as e:
-        raise RuntimeError(
-            f"OPA returned an unexpected shape for query {query!r}: {raw!r}"
-        ) from e
+        raise RuntimeError(f"OPA returned an unexpected shape for query {query!r}: {raw!r}") from e
+    return value
 
 
 def _to_check_result(rego_result: dict[str, Any], rule: RuleDefinition) -> CheckResult:

@@ -14,7 +14,7 @@ Public API surface (stable for v0.1):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -25,6 +25,8 @@ from scc_verifier.canonicalization import canonicalize, sha256_of
 from scc_verifier.schema_validator import (
     SchemaValidationResult,
     validate_attestation_envelope,
+)
+from scc_verifier.schema_validator import (
     validate_scc as _validate_scc,
 )
 
@@ -81,9 +83,7 @@ class AttestationSubject:
     scc_document_hash: str
     rule_bundle_id: str
     rule_bundle_hash: str
-    ratification_status: Literal[
-        "not-yet-ratified-by-sdaia", "ratified-by-sdaia", "deprecated"
-    ]
+    ratification_status: Literal["not-yet-ratified-by-sdaia", "ratified-by-sdaia", "deprecated"]
     verdict: Verdict
     checks: tuple[CheckResult, ...]
     evidence_manifest_hash: str | None = None
@@ -164,9 +164,9 @@ def _iso_z(dt: datetime) -> str:
     some don't. We normalize to `Z` for maximum compatibility.
     """
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     else:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     # Trim microseconds to milliseconds for stable hashing.
     return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
 
@@ -365,13 +365,14 @@ def verify(
     if signing_key is None:
         signing_key = _signing.ephemeral_keypair_with_warning()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
+    attestation_id = f"urn:datasitr:attestation:{subject.scc_id}:{_iso_z(now)}"
     # Canonicalize the subject + context block for signing.
     # The signature covers everything except the proof block itself.
-    to_sign = {
+    to_sign: dict[str, Any] = {
         "@context": ["https://www.w3.org/ns/credentials/v2"],
         "type": ["VerifiableCredential", "SccComplianceAttestation"],
-        "id": f"urn:datasitr:attestation:{subject.scc_id}:{_iso_z(now)}",
+        "id": attestation_id,
         "issuer": issuer,
         "validFrom": _iso_z(now),
         "credentialSubject": subject.to_subject_dict(),
@@ -380,7 +381,7 @@ def verify(
     pubkey_id = _signing.public_key_sha256(signing_key.public_key())
 
     return Attestation(
-        id=to_sign["id"],
+        id=attestation_id,
         issuer=issuer,
         valid_from=now,
         subject=subject,
