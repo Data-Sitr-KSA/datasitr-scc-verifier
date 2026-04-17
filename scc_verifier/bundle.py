@@ -53,7 +53,28 @@ BUNDLE_GLOBS: tuple[str, ...] = (
     "test_vectors/**/*.json",
 )
 
-BUNDLE_ID = "sdaia-scc-v0.1-2026-04-17"
+BUNDLE_ID = "sdaia-scc-v0.1-2024-09-02"
+"""
+Bundle version identifier, format: sdaia-scc-v{major}.{minor}-{YYYY-MM-DD}.
+
+The date suffix identifies the **regulatory moment** the bundle encodes —
+in this case the publication of SDAIA's Regulation on Personal Data
+Transfer Outside the Kingdom (1 September 2024) and the companion Saudi
+SCC template (2 September 2024). It is NOT the build date. A third party
+reading an attestation citing this bundle should know which regulatory
+text we compiled against, not which day we compiled it.
+
+Minor-version bumps (0.1 → 0.2) indicate rule catalog expansion without
+regulatory change. Major-version bumps (1.0 → 2.0) track SDAIA template
+amendments; the date suffix moves with the major bump.
+"""
+
+BUNDLE_BUILD_DATE = "2026-04-17"
+"""
+Build-time provenance: the day this bundle's code was cut. Used for
+diagnostics and reproducibility traceability; not part of the attestation
+envelope.
+"""
 
 
 def _bundle_files(root: Path = REPO_ROOT) -> list[Path]:

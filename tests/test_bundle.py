@@ -61,7 +61,23 @@ def test_bundle_id_is_dated() -> None:
     """The bundle ID must follow the documented `sdaia-scc-vX.Y-YYYY-MM-DD`
     pattern so historical attestations remain reproducible."""
     assert BUNDLE_ID.startswith("sdaia-scc-v")
-    assert "-2026-" in BUNDLE_ID or "-2025-" in BUNDLE_ID
+    # The date suffix identifies the regulatory moment, not the build
+    # date. For v0.1 this is the SDAIA Data Transfer Regulations and
+    # SCC template publication window (1-2 September 2024).
+    assert "-2024-09-" in BUNDLE_ID, (
+        f"BUNDLE_ID must reference the regulatory moment (2024-09-xx), "
+        f"not the build date. Got: {BUNDLE_ID}"
+    )
+
+
+def test_bundle_id_does_not_conflate_with_build_date() -> None:
+    """Regression test for D-01 drift finding: the bundle identifier
+    previously used the build date (2026-04-17), which semantically
+    misrepresents when the encoded regulations were published."""
+    from scc_verifier.bundle import BUNDLE_BUILD_DATE
+    assert BUNDLE_BUILD_DATE not in BUNDLE_ID, (
+        "Build date must not appear in BUNDLE_ID; they are separate concerns"
+    )
 
 
 def test_bundle_manifest_includes_test_vectors() -> None:

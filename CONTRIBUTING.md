@@ -16,14 +16,16 @@ We do NOT accept contributions that:
 
 ## Governance
 
-Rule-bundle changes follow the process in `docs/governance.md`:
+Rule-bundle changes follow this process:
 
-1. Written proposal (GitHub issue or design doc)
-2. Test vector coverage for the change (required)
-3. Saudi-counsel review (for rule changes affecting legal interpretation)
-4. 30-day public comment window
-5. SDAIA notification (courtesy pre-ratification; required post-ratification)
-6. Signed release
+1. Written proposal (GitHub issue or design doc).
+2. Test vector coverage for the change (required — rules cannot land without an adversarial vector that fails before the fix and passes after).
+3. Saudi-counsel review (for rule changes affecting legal interpretation).
+4. 30-day public comment window (for rule additions, removals, or changes in interpretation).
+5. SDAIA notification (courtesy pre-ratification; required post-ratification).
+6. Signed release — the rule bundle hash changes; the new version carries a `sdaia-scc-vX.Y-YYYY-MM-DD` identifier.
+
+Minor corrections that do not change the semantics of any rule (docs, typos, tooling) do not require the 30-day window but still require a PR with tests.
 
 ## Legal posture
 
