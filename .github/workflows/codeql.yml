@@ -39,6 +39,12 @@ jobs:
     name: CodeQL analysis (python)
     runs-on: ubuntu-latest
 
+    # CodeQL is free on PUBLIC repositories; on private repos it requires
+    # GitHub Advanced Security (a paid add-on). Skip the job while private
+    # rather than fail with "Advanced Security must be enabled."
+    # Auto-activates when the repo flips public at the Week-6 gate.
+    if: github.event.repository.private == false
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -46,6 +46,14 @@ jobs:
     name: Scorecard analysis
     runs-on: ubuntu-latest
 
+    # Scorecard's GraphQL probes (ListCommits, ListWebhooks, etc.) require
+    # scopes that the default GITHUB_TOKEN does not grant on PRIVATE
+    # repositories. Rather than plumb a PAT through a secret, we gate the
+    # job on the repo being public. While the repo is private this job is
+    # simply skipped; the workflow still runs (no red X), Scorecard
+    # activates automatically the moment the repo flips public.
+    if: github.event.repository.private == false
+
     # Scorecard needs these scopes:
     #   security-events: write  — upload SARIF to code-scanning
     #   id-token:        write  — OIDC token for publish_results
