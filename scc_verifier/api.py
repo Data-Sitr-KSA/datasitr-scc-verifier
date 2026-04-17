@@ -171,6 +171,28 @@ def _iso_z(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
 
 
+def _infer_layer_from_package(package: str) -> CheckLayer:
+    """Map a Rego package name to its CheckLayer tag.
+
+    Used when we synthesize a placeholder CheckResult for a rule we
+    didn't actually evaluate (e.g., Layer 2 skipped). Keeps the layer tag
+    consistent with what the rule would have produced had it run.
+    """
+    if package.endswith(".structural"):
+        return "structural"
+    if package.endswith(".value"):
+        return "value"
+    if package.endswith(".reference"):
+        return "reference"
+    if package.endswith(".freshness"):
+        return "freshness"
+    if package.endswith(".anchor"):
+        return "anchor"
+    if package.endswith(".judgment"):
+        return "judgment"
+    return "value"
+
+
 def verdict_from_checks(checks: tuple[CheckResult, ...]) -> Verdict:
     """Compute the overall verdict from a set of check results.
 
@@ -206,21 +228,38 @@ def verify(
     *,
     signing_key: Ed25519PrivateKey | None = None,
     issuer: str = "did:web:datasitr.com",
+    skip_layer_2: bool = False,
 ) -> Attestation:
     """Verify an SCC document and produce a signed attestation.
 
-    v0.1 evaluates only Layer 1 (structural / schema validation). Layer 2
-    semantic rules (Rego), Layer 3 evidence resolution, and the full
-    check catalog land in v0.2.
+    v0.2 evaluates Layer 1 (JSON Schema structural validation) and Layer 2
+    (Rego semantic + judgment rules via the OPA binary). Layer 3 evidence
+    resolution lands in v0.3.
+
+    Layer 2 evaluation is conditional:
+      - If the document fails Layer 1, Layer 2 is skipped (structurally
+        broken documents can't be meaningfully evaluated semantically;
+        the Rego rules would raise on missing fields).
+      - If the OPA binary is not discoverable, Layer 2 is skipped with a
+        UserWarning; the attestation is still emitted, and the rule
+        registry entries appear as NOT_APPLICABLE rather than silently
+        missing. This keeps the verifier usable in environments where
+        OPA is not yet installed.
+      - If `skip_layer_2=True` is passed, Layer 2 is skipped
+        unconditionally (useful for fast Layer-1-only lints).
 
     If no signing_key is supplied, an ephemeral keypair is generated with
     a UserWarning. The resulting attestation is cryptographically valid
-    but not verifiable against any published key, since the public key
-    is discarded when the process exits.
+    but not verifiable against any published key.
     """
+    import warnings
+
+    from scc_verifier import rego_evaluator as _rego
+
+    # Layer 1 — JSON Schema structural validation.
     schema_result = _validate_scc(scc_document)
     if schema_result.valid:
-        check = CheckResult(
+        layer_1_check = CheckResult(
             id="STRUCT-001",
             rule="has_all_mandatory_clauses_and_types",
             layer="structural",
@@ -228,14 +267,88 @@ def verify(
             detail="SCC document conforms to scc-canonical-v1 schema",
         )
     else:
-        check = CheckResult(
+        layer_1_check = CheckResult(
             id="STRUCT-001",
             rule="has_all_mandatory_clauses_and_types",
             layer="structural",
             status="FAIL",
             detail="Schema validation errors: " + "; ".join(schema_result.errors[:5]),
         )
-    checks = (check,)
+
+    # Layer 2 — Rego rule evaluation (value + judgment rules).
+    # Deliberately exclude STRUCT-001 from the Rego-evaluated set here: we
+    # already ran the JSON-Schema version above as the authoritative Layer 1
+    # source of truth. Running STRUCT-001 via Rego too would duplicate a
+    # check; the Rego STRUCT-001 is retained for third-party reproducibility
+    # but not wired into the default attestation.
+    layer_2_checks: tuple[CheckResult, ...] = ()
+    if skip_layer_2 or not schema_result.valid:
+        # Document structurally broken, or caller explicitly asked to skip.
+        # Produce NOT_APPLICABLE entries so consumers see the rule registry
+        # surface without having to re-derive what would have been evaluated.
+        layer_2_checks = tuple(
+            CheckResult(
+                id=r.id,
+                rule=r.result_var,
+                layer=_infer_layer_from_package(r.package),
+                status="NOT_APPLICABLE",
+                detail=(
+                    "skipped: caller requested skip_layer_2"
+                    if skip_layer_2
+                    else "skipped: document failed Layer 1 schema validation"
+                ),
+            )
+            for r in _rego.RULE_REGISTRY
+            if r.id != "STRUCT-001"
+        )
+    elif not _rego.is_opa_available():
+        warnings.warn(
+            "OPA binary not found; skipping Layer 2 rule evaluation. "
+            "Install with `brew install opa` (macOS) or see "
+            "scc_verifier.rego_evaluator.find_opa for full instructions.",
+            UserWarning,
+            stacklevel=2,
+        )
+        layer_2_checks = tuple(
+            CheckResult(
+                id=r.id,
+                rule=r.result_var,
+                layer=_infer_layer_from_package(r.package),
+                status="NOT_APPLICABLE",
+                detail="skipped: OPA binary not available in this environment",
+            )
+            for r in _rego.RULE_REGISTRY
+            if r.id != "STRUCT-001"
+        )
+    else:
+        try:
+            all_rego_checks = _rego.evaluate_rules(scc_document)
+            # Filter out STRUCT-001 from Rego set; already covered by schema.
+            layer_2_checks = tuple(c for c in all_rego_checks if c.id != "STRUCT-001")
+        except Exception as e:
+            # OPA present but evaluation blew up mid-flight. Mark rules
+            # NOT_APPLICABLE with the exception message rather than killing
+            # the verify call — the Layer 1 attestation is still useful and
+            # self-validates.
+            warnings.warn(
+                f"Layer 2 evaluation failed: {type(e).__name__}: {e}. "
+                f"Emitting attestation with Layer 1 only.",
+                UserWarning,
+                stacklevel=2,
+            )
+            layer_2_checks = tuple(
+                CheckResult(
+                    id=r.id,
+                    rule=r.result_var,
+                    layer=_infer_layer_from_package(r.package),
+                    status="NOT_APPLICABLE",
+                    detail=f"skipped: Layer 2 evaluator raised {type(e).__name__}",
+                )
+                for r in _rego.RULE_REGISTRY
+                if r.id != "STRUCT-001"
+            )
+
+    checks = (layer_1_check,) + layer_2_checks
 
     subject = AttestationSubject(
         scc_id=scc_document.get("scc_id", "UNKNOWN"),

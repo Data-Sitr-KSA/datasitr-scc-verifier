@@ -4,6 +4,67 @@ All notable changes to this project will be documented in this file. Every
 rule-bundle version carries a dated identifier (`sdaia-scc-vX.Y-YYYY-MM-DD`)
 so historical attestations remain reproducible.
 
+## [0.2.0-draft] - 2026-04-18
+
+Layer 2 goes live. OPA/Rego evaluator integrated end-to-end.
+
+### Added
+
+- `scc_verifier/rego_evaluator.py` — subprocess-based OPA 1.x evaluator with a
+  concrete `RULE_REGISTRY` of the 9 shipped rules (STRUCT-001, VAL-GOV-LAW,
+  VAL-DISPUTE-FORUM, VAL-BREACH-EXPORTER, VAL-BREACH-SDAIA, VAL-SENSITIVE-ROUTE,
+  JUDGE-LIAB-001, JUDGE-GOV-ACCESS-001, JUDGE-INDEM-001). Binary discovery via
+  `SCC_OPA_BIN` env var or `$PATH`; `OpaNotFoundError` carries install
+  instructions when absent.
+- `tests/test_rego_evaluator.py` — 8 regression tests, auto-skip when the OPA
+  binary is unavailable so CI environments without OPA still pass the rest of
+  the suite.
+- `verify()` now calls the Rego evaluator after schema validation and emits a
+  multi-check attestation. When OPA is absent, degrades gracefully to Layer-1
+  with `NOT_APPLICABLE` placeholders and a `UserWarning`.
+- `README.md` updated with an OPA install section.
+
+### Changed
+
+- All 5 Rego rule files migrated from pre-1.0 Rego syntax to **Rego v1**
+  (`import rego.v1`, `if` keyword on rule bodies, `contains` keyword on partial
+  set rules, `some ... in ...` iteration).
+- Test vector `*.expected.json` files now carry `v0_2_expected` matching the
+  shipped semantic verdicts:
+  - `known_good/ksa_domestic_scc`: `PASS_WITH_COUNSEL_ITEMS` (6 PASS + 3 REVIEW)
+  - `known_bad/missing_governing_law`: `FAIL` (VAL-GOV-LAW and VAL-DISPUTE-FORUM
+    fire; `pending_layer_2: true` removed)
+  - `known_bad/sensitive_onward_transfer`: `FAIL` (VAL-SENSITIVE-ROUTE fires;
+    `pending_layer_2: true` removed)
+  - `known_bad/structurally_malformed`: `FAIL` (Layer 1 catches it; Layer 2
+    skipped as `NOT_APPLICABLE`)
+  - `judgment_required/needs_counsel_review`: `PASS_WITH_COUNSEL_ITEMS`
+    (JUDGE-* rules flag correctly; `pending_layer_2: true` removed)
+- `run-vectors` expectation priority updated to
+  `v0_2_expected > verdict > v0_1_expected`.
+
+### Test suite
+
+- 58 passing (was 50). Layer 2 determinism, rule-registry integrity, and
+  per-rule outcome regressions all covered.
+- All 5 test vectors run cleanly, 0 divergences, 0 skipped.
+
+### Known limitations carried forward
+
+- Layer 3 (evidence resolution against TRA / TOMs / subprocessor credentials)
+  still deferred to v0.3.
+- Attestation chain continuity (`prev_attestation_hash` threading) still
+  deferred to v0.3.
+- No `.well-known/scc-verifier-keys.json` key registry yet.
+- Published signed bundle archive (`bundle.json` + `MANIFEST.ed25519`) still
+  deferred; v0.2 continues to compute the bundle hash over the live repo
+  directory tree.
+
+### Not ratified by SDAIA. Not yet reviewed by Saudi-licensed counsel.
+Attestations produced by this version carry `ratification_status: not-yet-ratified-by-sdaia`.
+
+---
+
 ## [0.1.0-draft] - 2026-04-17
 
 Initial scaffold. Pre-counsel-review.

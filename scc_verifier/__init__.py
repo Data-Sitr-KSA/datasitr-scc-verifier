@@ -41,7 +41,7 @@ from scc_verifier.api import (
 )
 from scc_verifier.schema_validator import SchemaValidationResult
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Attestation",

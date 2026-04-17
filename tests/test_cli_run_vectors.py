@@ -12,13 +12,18 @@ from scc_verifier.cli import main as cli_main
 
 
 def test_run_vectors_exits_zero_when_all_match() -> None:
-    """The shipped corpus should fully pass the v0.1 scope. Any non-pending
-    vector that diverges from its v0_1_expected is a contract break."""
+    """The shipped corpus must fully pass. Any vector that diverges from
+    its expected verdict (v0_2_expected or the plain `verdict` field) is
+    a contract break."""
     exit_code = cli_main(["run-vectors"])
-    assert exit_code == 0, "run-vectors must return 0 when all non-pending vectors match"
+    assert exit_code == 0, "run-vectors must return 0 when all vectors match"
 
 
 def test_verify_exits_zero_on_known_good(tmp_path) -> None:
+    """In v0.2 the known-good vector evaluates to PASS_WITH_COUNSEL_ITEMS
+    because the 3 judgment rules (liability, gov access, indemnification)
+    correctly emit REQUIRES_HUMAN_REVIEW on every structurally-valid SCC.
+    That is the intended Layer-2 behavior — the verifier flags, not decides."""
     out = tmp_path / "attestation.json"
     exit_code = cli_main(
         [
@@ -31,12 +36,15 @@ def test_verify_exits_zero_on_known_good(tmp_path) -> None:
     )
     assert exit_code == 0
     assert out.exists()
-    # Envelope must be non-empty JSON.
     import json
     with out.open() as f:
         envelope = json.load(f)
-    assert envelope["credentialSubject"]["verdict"] == "PASS"
+    assert envelope["credentialSubject"]["verdict"] == "PASS_WITH_COUNSEL_ITEMS"
     assert envelope["proof"]["proofValue"].startswith("ed25519:")
+    # Layer 2 must have actually run: more than just STRUCT-001.
+    check_ids = {c["id"] for c in envelope["credentialSubject"]["checks"]}
+    assert "VAL-GOV-LAW" in check_ids, "Layer 2 rules must appear in the attestation"
+    assert "JUDGE-LIAB-001" in check_ids, "Judgment rules must appear in the attestation"
 
 
 def test_verify_exits_nonzero_on_structurally_malformed(tmp_path) -> None:

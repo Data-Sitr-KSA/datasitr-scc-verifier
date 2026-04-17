@@ -10,20 +10,30 @@ This is a reference implementation. It is offered to SDAIA for ratification and 
 
 ## Status
 
-**Version:** 0.1.0-draft (pre-counsel-review)
+**Version:** 0.2.0-draft (pre-counsel-review)
 **Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
 **License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
-## What v0.1 actually does (scope ratchet; read this before citing)
+## What v0.2 actually does (scope ratchet; read this before citing)
 
-| Layer | What it is | v0.1 status |
+| Layer | What it is | v0.2 status |
 |---|---|---|
 | **1. Structural** | JSON Schema Draft 2020-12 validation of the SCC canonical form, with `format: date` / `format: date-time` enforced via `FormatChecker`. | **Live and tested.** 11 regression tests cover missing clauses, bad date formats, out-of-range values, enum violations. |
-| **2. Semantic** | Rego rules (Open Policy Agent) encoding value-bound, reference-integrity, and freshness constraints. 9 rules authored in `rules/`. | **Authored, not wired.** The OPA runtime integration lands in v0.2. Test vectors exercising Layer-2 rules are marked `pending_layer_2: true` and skipped by `run-vectors`. |
-| **3. Evidence** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists via W3C Verifiable Credentials. | **Deferred to v0.2.** |
-| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
+| **2. Semantic** | Rego rules (Open Policy Agent) encoding value-bound and judgment constraints. 9 rules authored in `rules/` across 5 files. | **Live and evaluated** via the OPA binary subprocess. All 5 shipped test vectors now produce their semantic verdicts with zero divergences. The rule registry drives evaluation; adding a new rule = adding a registry entry plus a `.rego` file. |
+| **3. Evidence** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists via W3C Verifiable Credentials. | **Deferred to v0.3.** |
+| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`, now carries the full Layer-1+Layer-2 check set. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
 
-v0.1 is a floor, not a ceiling. The public envelope format, schemas, and rule-bundle-hash semantics are stable; new rules ratchet upward through v0.2 and v0.3 without breaking attestations produced under prior bundles.
+v0.2 is a floor, not a ceiling. The public envelope format, schemas, and rule-bundle-hash semantics are stable; new rules ratchet upward through v0.3 and v1.0 without breaking attestations produced under prior bundles.
+
+## Runtime requirement: OPA binary
+
+Layer 2 evaluation requires the [Open Policy Agent](https://www.openpolicyagent.org/) binary (v0.50 or later, v1.x recommended). Install:
+
+- **macOS:** `brew install opa`
+- **Linux:** `curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static && chmod +x opa && sudo mv opa /usr/local/bin/`
+- **Docker:** `docker run openpolicyagent/opa:latest`
+
+If the binary is not discoverable, the verifier degrades gracefully: attestations are still emitted with Layer 1 results, and Layer 2 rule results appear as `NOT_APPLICABLE` with a skip reason. A `UserWarning` surfaces the install instructions. Set `SCC_OPA_BIN=/path/to/opa` to use a non-PATH location.
 
 ## What this verifier does NOT do
 

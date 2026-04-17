@@ -1,10 +1,9 @@
 {
   "verdict": "FAIL",
-  "pending_layer_2": true,
-  "pending_reason": "VAL-SENSITIVE-ROUTE is a Rego semantic rule; it requires the OPA runtime integration landing in v0.2. The SCC is structurally valid (passes Layer 1), so v0.1 cannot catch this semantically-wrong SCC. Do not remove this vector — it is the canonical regression test for the Article 18 onward-transfer guard in v0.2.",
-  "v0_1_behavior_note": "In v0.1 this vector would produce PASS because Layer 2 is not wired. Skipped by run-vectors until v0.2.",
-  "required_check_ids_fail_v1_0": [
+  "v0_2_expected": "FAIL",
+  "notes": "SCC declares PDPL Article 18 sensitive category (health data) AND permits onward transfers. VAL-SENSITIVE-ROUTE correctly fires FAIL; all other rules produce their expected outcomes. This vector is the canonical regression test for the Article 18 onward-transfer guard.",
+  "required_check_ids_fail": [
     "VAL-SENSITIVE-ROUTE"
   ],
-  "regulatory_violation": "SCC declares PDPL Article 18 sensitive category (health data) AND permits onward transfers. This combination is forbidden by the Data Transfer Regulations."
+  "regulatory_violation": "Article 18 sensitive category declared alongside `onward_transfers.permitted: true` — combination forbidden by the Data Transfer Regulations."
 }

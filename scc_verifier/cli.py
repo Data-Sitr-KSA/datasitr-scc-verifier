@@ -87,17 +87,20 @@ def _cmd_verify(args: argparse.Namespace) -> int:
 def _cmd_run_vectors(args: argparse.Namespace) -> int:
     """Run packaged test vectors.
 
-    Each vector's expected_verdict.json declares the expected outcome.
-    v0.1 only evaluates Layer 1, so expectations are structured as:
-        {
-          "v0_1_expected": "PASS" | "FAIL" | "PASS_WITH_COUNSEL_ITEMS",
-          ...
-        }
-    Vectors marked "pending_layer_2": true are skipped until the OPA
-    integration lands in v0.2 — they represent regulatory violations that
-    can only be caught semantically, not structurally.
+    Each vector's `<basename>.expected.json` declares the expected outcome.
+    v0.2 evaluates Layer 1 (schema) plus Layer 2 (Rego rules) via OPA, so
+    vectors are matched against this priority order:
 
-    Exits 0 only if every non-pending vector matches its v0_1_expected.
+        1. `v0_2_expected`   (preferred — current code version)
+        2. `verdict`         (v1.0 target, same shape)
+        3. `v0_1_expected`   (legacy fallback for un-updated vectors)
+
+    Vectors marked `pending_layer_2: true` are still honored as a skip
+    signal — if a future rule regresses and the vector drops back to
+    Layer-1-only behavior, the skip re-engages automatically rather than
+    generating a noisy FAIL.
+
+    Exits 0 iff every non-pending vector matches its declared expectation.
     """
     vectors_root = Path(__file__).parent.parent / "test_vectors"
     categories = ("known_good", "known_bad", "judgment_required")
@@ -126,8 +129,12 @@ def _cmd_run_vectors(args: argparse.Namespace) -> int:
                 print(f"  SKIP  {cat}/{scc_file.name}  — {reason}")
                 continue
 
-            # v0.1-honest expectation, falling back to 'verdict' for forward compat.
-            want = expected.get("v0_1_expected") or expected.get("verdict")
+            # Expectation priority: v0.2 → v1.0 target → v0.1 legacy.
+            want = (
+                expected.get("v0_2_expected")
+                or expected.get("verdict")
+                or expected.get("v0_1_expected")
+            )
             scc = _load_json(scc_file)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
