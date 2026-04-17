@@ -1,0 +1,23 @@
+{
+  "verdict": "PASS_WITH_COUNSEL_ITEMS",
+  "summary_expected": {
+    "total_rules_minimum": 7,
+    "passed_minimum": 4,
+    "failed_max": 0,
+    "requires_human_review_minimum": 3
+  },
+  "required_check_ids_pass": [
+    "STRUCT-001",
+    "VAL-GOV-LAW",
+    "VAL-DISPUTE-FORUM",
+    "VAL-BREACH-EXPORTER",
+    "VAL-BREACH-SDAIA",
+    "VAL-SENSITIVE-ROUTE"
+  ],
+  "required_check_ids_human_review": [
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ],
+  "notes": "Valid Saudi-domestic SCC with controller and processor both in KSA, no Article 18 sensitive categories, proper notification windows, correct governing law. Judgment clauses flagged as expected for counsel review."
+}

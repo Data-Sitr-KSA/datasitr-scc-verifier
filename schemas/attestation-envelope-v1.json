@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datasitr.com/schemas/attestation-envelope-v1.json",
+  "title": "SCC Compliance Attestation Envelope v1",
+  "description": "Signed verdict produced by a machine-verifiable SCC compliance check. Follows W3C Verifiable Credentials data-model v2.0 shape. Deterministic: same inputs and same rule bundle produce byte-identical attestations.",
+  "type": "object",
+  "required": ["@context", "type", "id", "issuer", "validFrom", "credentialSubject", "proof"],
+  "properties": {
+    "@context": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "contains": { "const": "https://www.w3.org/ns/credentials/v2" }
+    },
+    "type": {
+      "type": "array",
+      "items": { "type": "string" },
+      "contains": { "const": "SccComplianceAttestation" }
+    },
+    "id": { "type": "string", "format": "uri" },
+    "issuer": { "type": "string", "format": "uri" },
+    "validFrom": { "type": "string", "format": "date-time" },
+    "credentialSubject": {
+      "type": "object",
+      "required": ["scc_id", "scc_document_hash", "rule_bundle", "verdict", "summary", "checks"],
+      "properties": {
+        "scc_id": { "type": "string" },
+        "scc_document_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "rule_bundle": {
+          "type": "object",
+          "required": ["id", "hash", "ratification_status"],
+          "properties": {
+            "id": { "type": "string" },
+            "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            "ratified_by": { "type": "string" },
+            "ratification_status": {
+              "enum": ["not-yet-ratified-by-sdaia", "ratified-by-sdaia", "deprecated"]
+            }
+          }
+        },
+        "verdict": {
+          "enum": ["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS"]
+        },
+        "summary": {
+          "type": "object",
+          "required": ["total_rules", "passed", "failed", "requires_human_review", "not_applicable"],
+          "properties": {
+            "total_rules": { "type": "integer", "minimum": 0 },
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 },
+            "requires_human_review": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/check_result" }
+        },
+        "evidence_manifest_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "prev_attestation_hash": {
+          "oneOf": [
+            { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "required": ["type", "created", "verificationMethod", "proofPurpose", "proofValue"],
+      "properties": {
+        "type": { "const": "Ed25519Signature2020" },
+        "created": { "type": "string", "format": "date-time" },
+        "verificationMethod": { "type": "string" },
+        "proofPurpose": { "const": "assertionMethod" },
+        "proofValue": {
+          "type": "string",
+          "pattern": "^ed25519:[A-Za-z0-9+/=_-]+$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "check_result": {
+      "type": "object",
+      "required": ["id", "rule", "layer", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "rule": { "type": "string" },
+        "layer": {
+          "enum": ["structural", "value", "reference", "evidence", "freshness", "anchor", "judgment"]
+        },
+        "status": {
+          "enum": ["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE"]
+        },
+        "detail": { "type": "string" },
+        "observed_value": {},
+        "evidence": { "type": "object" },
+        "counsel_field": { "type": "string" },
+        "rationale_required": { "type": "boolean" }
+      }
+    }
+  }
+}

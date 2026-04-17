@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.DS_Store
+
+# Signing keys MUST NOT be committed
+*.ed25519
+*.pem
+*.key
+keys/
+
+# Locally-generated attestations (per-run artefacts, not source)
+attestations/
+*.attestation.json

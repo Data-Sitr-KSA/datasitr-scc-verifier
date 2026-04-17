@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "datasitr-scc-verifier"
+version = "0.1.0"
+description = "Machine-verifiable compliance for SDAIA Standard Contractual Clauses under the Saudi PDPL."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Data Sitr Est." }]
+keywords = ["pdpl", "sdaia", "scc", "privacy", "compliance", "saudi-arabia"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Legal Industry",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+]
+
+dependencies = [
+    "cryptography>=42.0",
+    "jsonschema>=4.21",
+    "jcs>=0.2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+scc-verify = "scc_verifier.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier"
+Issues = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scc_verifier"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

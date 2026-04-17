@@ -1,0 +1,67 @@
+{
+  "scc_id": "SCC-2026-04-002",
+  "rule_bundle_required": "sdaia-scc-v0.1-2026-04-17",
+  "parties": {
+    "exporter": {
+      "legal_name": "Example KSA Enterprise Ltd.",
+      "cr_number": "1010000000",
+      "registered_address": "Riyadh, Kingdom of Saudi Arabia",
+      "country": "SA",
+      "role": "CONTROLLER"
+    },
+    "importer": {
+      "legal_name": "Foreign AI Provider Inc.",
+      "cr_number": "US-00000000",
+      "registered_address": "California, United States",
+      "country": "US",
+      "role": "PROCESSOR"
+    }
+  },
+  "subject_matter": {
+    "data_categories": ["name", "national_id", "contact_details"],
+    "data_subjects": ["customers"],
+    "sensitive_categories_art18": ["none"],
+    "purpose": "AI inference",
+    "transfer_basis": "standard_contractual_clauses",
+    "duration": { "start": "2026-05-01", "end": "2027-04-30" }
+  },
+  "obligations": {
+    "exporter": [ { "id": "EXP-01", "text_ref": "section_3_item_1", "committed": true } ],
+    "importer": [ { "id": "IMP-01", "text_ref": "section_4_item_1", "committed": true } ]
+  },
+  "data_subject_rights": { "response_window_days": 30 },
+  "security": {
+    "toms_snapshot_ref": "toms-snapshot-2026-04-17T14:00:00Z",
+    "toms_snapshot_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+  },
+  "breach_notification": {
+    "exporter_notification_window_hours": 24,
+    "sdaia_notification_window_hours": 72
+  },
+  "onward_transfers": { "permitted": false },
+  "audit_rights": { "notice_period_days": 10, "scope": "compliance-with-these-clauses" },
+  "governing_law": {
+    "jurisdiction": "State of California",
+    "dispute_forum": "California courts"
+  },
+  "term": { "effective_date": "2026-05-01", "termination_notice_days": 30 },
+  "liability": { "cap_amount_sar": 1000000, "rationale_ref": "liability-rationale-2026-04-17" },
+  "annex_a_tra": {
+    "tra_id": "TRA-2026-04-002",
+    "risk_level": "high",
+    "approved_at": "2026-04-15",
+    "expires_at": "2027-04-15"
+  },
+  "annex_b_toms_ref": "toms-snapshot-2026-04-17T14:00:00Z",
+  "annex_c_subprocessors": [],
+  "signatures": {
+    "exporter": {
+      "name": "Jane Doe", "title": "DPO",
+      "signed_at": "2026-04-30T12:00:00Z", "signature_ref": "sig-exp"
+    },
+    "importer": {
+      "name": "John Smith", "title": "Legal",
+      "signed_at": "2026-04-30T12:05:00Z", "signature_ref": "sig-imp"
+    }
+  }
+}

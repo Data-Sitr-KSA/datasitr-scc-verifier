@@ -1,0 +1,11 @@
+{
+  "verdict": "FAIL",
+  "summary_expected": {
+    "failed_minimum": 2
+  },
+  "required_check_ids_fail": [
+    "VAL-GOV-LAW",
+    "VAL-DISPUTE-FORUM"
+  ],
+  "notes": "SCC declares State of California as governing law and California courts as dispute forum. Both fail VAL-GOV-LAW and VAL-DISPUTE-FORUM. A cross-border transfer to a US-based importer with foreign governing law does not satisfy SDAIA's Article 29 requirements, regardless of other safeguards."
+}
