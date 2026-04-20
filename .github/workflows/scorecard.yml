@@ -96,6 +96,6 @@ jobs:
       # an artifact but doesn't clutter the Security tab on every cron.
       - name: Upload to code-scanning
         if: github.event_name == 'push'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
