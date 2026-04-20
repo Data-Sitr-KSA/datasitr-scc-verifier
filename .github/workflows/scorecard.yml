@@ -85,7 +85,7 @@ jobs:
       # Persist the SARIF as a build artifact so a reviewer can download
       # and inspect it locally even while the repo is private.
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scorecard-sarif
           path: results.sarif
