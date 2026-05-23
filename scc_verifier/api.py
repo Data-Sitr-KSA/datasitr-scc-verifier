@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from scc_verifier import bundle as _bundle
 from scc_verifier import signing as _signing
 from scc_verifier.canonicalization import canonicalize, sha256_of
+from scc_verifier.models import CheckLayer, CheckResult, CheckStatus, Verdict
 from scc_verifier.schema_validator import (
     SchemaValidationResult,
     validate_attestation_envelope,
@@ -29,52 +30,6 @@ from scc_verifier.schema_validator import (
 from scc_verifier.schema_validator import (
     validate_scc as _validate_scc,
 )
-
-Verdict = Literal["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS", "INCOMPLETE"]
-CheckLayer = Literal[
-    "structural",
-    "value",
-    "reference",
-    "evidence",
-    "freshness",
-    "anchor",
-    "judgment",
-]
-CheckStatus = Literal["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE", "INCOMPLETE"]
-
-
-@dataclass(frozen=True)
-class CheckResult:
-    """Result of a single rule evaluation."""
-
-    id: str
-    rule: str
-    layer: CheckLayer
-    status: CheckStatus
-    detail: str | None = None
-    observed_value: Any = None
-    evidence: dict[str, Any] | None = None
-    counsel_field: str | None = None
-    rationale_required: bool = False
-
-    def to_dict(self) -> dict[str, Any]:
-        out: dict[str, Any] = {
-            "id": self.id,
-            "rule": self.rule,
-            "layer": self.layer,
-            "status": self.status,
-        }
-        if self.detail is not None:
-            out["detail"] = self.detail
-        if self.observed_value is not None:
-            out["observed_value"] = self.observed_value
-        if self.evidence is not None:
-            out["evidence"] = self.evidence
-        if self.counsel_field is not None:
-            out["counsel_field"] = self.counsel_field
-        if self.rationale_required:
-            out["rationale_required"] = self.rationale_required
-        return out
 
 
 @dataclass(frozen=True)
