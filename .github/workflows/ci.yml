@@ -41,7 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           OPA_VERSION="v1.15.2"
-          curl -fsSL -o /usr/local/bin/opa \
+          curl --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 120 \
+            -o /usr/local/bin/opa \
             "https://openpolicyagent.org/downloads/${OPA_VERSION}/opa_linux_amd64_static"
           chmod +x /usr/local/bin/opa
           opa version
