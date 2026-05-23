@@ -23,6 +23,8 @@ name: Scorecard
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   branch_protection_rule:
   schedule:
     # Monday 03:17 UTC — off-minute to avoid the fleet-wide :00 spike on
@@ -70,7 +72,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           results_file: results.sarif
           results_format: sarif
-          publish_results: true
+          publish_results: ${{ github.event_name != 'pull_request' }}
 
       # Persist the SARIF as a build artifact so a reviewer can download
       # and inspect it locally even while the repo is private.
