@@ -38,9 +38,10 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from scc_verifier.api import CheckResult
+if TYPE_CHECKING:
+    from scc_verifier.api import CheckResult
 
 REPO_ROOT = Path(__file__).parent.parent
 RULES_DIR = REPO_ROOT / "rules"
@@ -256,6 +257,8 @@ def _to_check_result(rego_result: dict[str, Any], rule: RuleDefinition) -> Check
     counsel_field / rationale_required). This function is a thin mapping,
     not a transformation.
     """
+    from scc_verifier.api import CheckResult
+
     return CheckResult(
         id=rego_result.get("id", rule.id),
         rule=rego_result.get("rule", "unknown"),
