@@ -74,7 +74,7 @@ jobs:
           set -euo pipefail
           # Verify against the known-good vector and inspect the attestation.
           scc-verify verify \
-            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --scc test_vectors/known_good/ksa_to_foreign_processor_scc.json \
             --out /tmp/attestation.json
           python -c "
           import json, sys
@@ -130,7 +130,7 @@ jobs:
           set -euo pipefail
           set +e
           scc-verify verify \
-            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --scc test_vectors/known_good/ksa_to_foreign_processor_scc.json \
             --out /tmp/attestation.json
           exit_code=$?
           set -e
@@ -154,7 +154,7 @@ jobs:
           "
 
           scc-verify verify \
-            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --scc test_vectors/known_good/ksa_to_foreign_processor_scc.json \
             --out /tmp/attestation-allow.json \
             --allow-incomplete-without-opa
           python -c "
