@@ -39,6 +39,18 @@ def _load_json(path: Path) -> dict:
     return loaded
 
 
+def _is_incomplete_without_opa(envelope: dict) -> bool:
+    """Return True when the only incomplete condition is missing OPA."""
+    subject = envelope["credentialSubject"]
+    if subject["verdict"] != "INCOMPLETE":
+        return False
+    checks = subject["checks"]
+    incomplete = [c for c in checks if c["status"] == "INCOMPLETE"]
+    return bool(incomplete) and all(
+        "OPA binary not available" in c.get("detail", "") for c in incomplete
+    )
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     scc_path = Path(args.scc)
     if not scc_path.exists():
@@ -87,10 +99,21 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     print(
         f"Verdict: {verdict}  "
         f"({s['passed']} PASS / {s['failed']} FAIL / "
-        f"{s['requires_human_review']} REVIEW)",
+        f"{s['requires_human_review']} REVIEW / "
+        f"{s['not_applicable']} NA / "
+        f"{s['incomplete']} INCOMPLETE)",
         file=sys.stderr,
     )
-    return 0 if verdict in ("PASS", "PASS_WITH_COUNSEL_ITEMS") else 1
+    if verdict in ("PASS", "PASS_WITH_COUNSEL_ITEMS"):
+        return 0
+    if args.allow_incomplete_without_opa and _is_incomplete_without_opa(envelope):
+        print(
+            "warning: returning success only because --allow-incomplete-without-opa was set; "
+            "the attestation verdict remains INCOMPLETE",
+            file=sys.stderr,
+        )
+        return 0
+    return 1
 
 
 def _cmd_run_vectors(args: argparse.Namespace) -> int:
@@ -219,7 +242,7 @@ def _cmd_keygen(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="scc-verify",
-        description="Machine-verifiable compliance for SDAIA SCCs",
+        description="Draft canonical-form verifier for machine-checkable SDAIA SCC elements",
     )
     parser.add_argument("--version", action="version", version=f"scc-verify {__version__}")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -231,6 +254,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to an Ed25519 private key (PEM). If omitted, an ephemeral key is used.",
     )
     p_verify.add_argument("--out", help="Write attestation JSON to this path")
+    p_verify.add_argument(
+        "--allow-incomplete-without-opa",
+        action="store_true",
+        help=(
+            "Return exit code 0 for an INCOMPLETE attestation caused only by a missing "
+            "OPA binary. The emitted verdict remains INCOMPLETE."
+        ),
+    )
     p_verify.set_defaults(func=_cmd_verify)
 
     p_run = sub.add_parser("run-vectors", help="Run the packaged test-vector corpus")

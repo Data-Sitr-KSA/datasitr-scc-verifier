@@ -93,9 +93,9 @@ jobs:
       - name: Test-vector corpus contract (exit 0 on 0 divergences)
         run: scc-verify run-vectors
 
-  # Separate job: confirm the verifier still functions without OPA installed.
-  # This locks the graceful-degradation contract (verify emits Layer-1-only
-  # attestations with a UserWarning instead of crashing).
+  # Separate job: confirm missing OPA cannot produce a clean PASS.
+  # This locks the INCOMPLETE contract while still allowing an explicit
+  # Layer-1-only run when the caller opts in.
   test-without-opa:
     name: test (no OPA installed)
     runs-on: ubuntu-latest
@@ -125,21 +125,42 @@ jobs:
       - name: Pytest (Rego tests should auto-skip)
         run: pytest -v --tb=short
 
-      - name: Verify still emits a Layer-1-only attestation
+      - name: Verify emits INCOMPLETE without OPA
         run: |
           set -euo pipefail
-          # UserWarning is expected but must not cause a non-zero exit.
-          # PYTHONWARNINGS=error would flip them to errors, so we leave it unset.
+          set +e
           scc-verify verify \
             --scc test_vectors/known_good/ksa_domestic_scc.json \
             --out /tmp/attestation.json
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -eq 0 ]; then
+            echo "expected non-zero exit when OPA is absent, got $exit_code"
+            exit 1
+          fi
           python -c "
           import json
           env = json.load(open('/tmp/attestation.json'))
           subj = env['credentialSubject']
-          # Without OPA, verdict is PASS (Layer 1 pass, Layer 2 all NOT_APPLICABLE).
-          assert subj['verdict'] == 'PASS', subj['verdict']
-          na = [c for c in subj['checks'] if c['status'] == 'NOT_APPLICABLE']
-          assert na, 'expected NOT_APPLICABLE entries when OPA is absent'
-          print(f\"OK: Layer-1-only verdict={subj['verdict']}, {len(na)} NOT_APPLICABLE checks\")
+          assert subj['verdict'] == 'INCOMPLETE', subj['verdict']
+          incomplete = [
+              c for c in subj['checks']
+              if c['status'] == 'INCOMPLETE'
+              and (c['id'].startswith('VAL-') or c['id'].startswith('JUDGE-'))
+          ]
+          assert incomplete, 'expected Layer-2 INCOMPLETE checks when OPA is absent'
+          assert any('OPA binary not available' in c.get('detail', '') for c in incomplete)
+          print(f\"OK: missing-OPA verdict={subj['verdict']}, {len(incomplete)} INCOMPLETE checks\")
+          "
+
+          scc-verify verify \
+            --scc test_vectors/known_good/ksa_domestic_scc.json \
+            --out /tmp/attestation-allow.json \
+            --allow-incomplete-without-opa
+          python -c "
+          import json
+          env = json.load(open('/tmp/attestation-allow.json'))
+          subj = env['credentialSubject']
+          assert subj['verdict'] == 'INCOMPLETE', subj['verdict']
+          print(f\"OK: allow flag returned zero while verdict stayed {subj['verdict']}\")
           "

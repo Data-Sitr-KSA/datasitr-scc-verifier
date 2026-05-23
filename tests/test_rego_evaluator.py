@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from scc_verifier import rego_evaluator
+from scc_verifier.api import _infer_layer_from_package
 from scc_verifier.rego_evaluator import (
     RULE_REGISTRY,
     OpaNotFoundError,
@@ -50,6 +51,15 @@ def test_rule_registry_is_non_empty() -> None:
         "JUDGE-INDEM-001",
     ):
         assert expected in ids, f"rule {expected} missing from registry"
+
+
+def test_rule_registry_packages_have_explicit_layer_mapping() -> None:
+    """New rule packages must not silently fall back to the value layer."""
+    for rule in RULE_REGISTRY:
+        inferred = _infer_layer_from_package(rule.package)
+        assert inferred != "value" or rule.package.endswith(".value"), (
+            f"{rule.id} package {rule.package!r} fell back to value layer"
+        )
 
 
 def test_find_opa_raises_with_useful_message_when_missing(monkeypatch) -> None:

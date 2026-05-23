@@ -1,6 +1,6 @@
 {
   "scc_id": "SCC-2026-04-003",
-  "rule_bundle_required": "sdaia-scc-v0.1-2026-04-17",
+  "rule_bundle_required": "sdaia-scc-v0.1-2024-09-02",
   "parties": {
     "exporter": {
       "legal_name": "Example KSA Hospital",

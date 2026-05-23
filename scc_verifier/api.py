@@ -4,7 +4,7 @@ All envelopes are designed to canonicalize (RFC 8785 JCS) to a
 byte-identical form across verifier implementations, so third parties can
 reproduce verdicts independently.
 
-Public API surface (stable for v0.1):
+Public API surface (stable for v0.2):
     validate_schema(scc_document) -> SchemaValidationResult
     verify(scc_document, signing_key=None) -> Attestation
     CheckResult, Attestation, AttestationSubject — dataclasses
@@ -30,7 +30,7 @@ from scc_verifier.schema_validator import (
     validate_scc as _validate_scc,
 )
 
-Verdict = Literal["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS"]
+Verdict = Literal["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS", "INCOMPLETE"]
 CheckLayer = Literal[
     "structural",
     "value",
@@ -40,7 +40,7 @@ CheckLayer = Literal[
     "anchor",
     "judgment",
 ]
-CheckStatus = Literal["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE"]
+CheckStatus = Literal["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE", "INCOMPLETE"]
 
 
 @dataclass(frozen=True)
@@ -97,6 +97,7 @@ class AttestationSubject:
             "failed": 0,
             "requires_human_review": 0,
             "not_applicable": 0,
+            "incomplete": 0,
         }
         for check in self.checks:
             if check.status == "PASS":
@@ -107,6 +108,8 @@ class AttestationSubject:
                 counts["requires_human_review"] += 1
             elif check.status == "NOT_APPLICABLE":
                 counts["not_applicable"] += 1
+            elif check.status == "INCOMPLETE":
+                counts["incomplete"] += 1
         return counts
 
     def to_subject_dict(self) -> dict[str, Any]:
@@ -198,11 +201,14 @@ def verdict_from_checks(checks: tuple[CheckResult, ...]) -> Verdict:
 
     Rules:
       - Any FAIL → overall FAIL
+      - No FAIL but any INCOMPLETE → INCOMPLETE
       - No FAIL but any REQUIRES_HUMAN_REVIEW → PASS_WITH_COUNSEL_ITEMS
       - No FAIL and no REQUIRES_HUMAN_REVIEW → PASS
     """
     if any(c.status == "FAIL" for c in checks):
         return "FAIL"
+    if any(c.status == "INCOMPLETE" for c in checks):
+        return "INCOMPLETE"
     if any(c.status == "REQUIRES_HUMAN_REVIEW" for c in checks):
         return "PASS_WITH_COUNSEL_ITEMS"
     return "PASS"
@@ -232,21 +238,23 @@ def verify(
 ) -> Attestation:
     """Verify an SCC document and produce a signed attestation.
 
-    v0.2 evaluates Layer 1 (JSON Schema structural validation) and Layer 2
-    (Rego semantic + judgment rules via the OPA binary). Layer 3 evidence
-    resolution lands in v0.3.
+    v0.2 evaluates Layer 1 (JSON Schema structural validation), an active
+    rule-bundle identity check, and Layer 2 (Rego semantic + judgment rules
+    via the OPA binary). Layer 3 evidence resolution lands in v0.3.
 
     Layer 2 evaluation is conditional:
       - If the document fails Layer 1, Layer 2 is skipped (structurally
         broken documents can't be meaningfully evaluated semantically;
         the Rego rules would raise on missing fields).
-      - If the OPA binary is not discoverable, Layer 2 is skipped with a
-        UserWarning; the attestation is still emitted, and the rule
-        registry entries appear as NOT_APPLICABLE rather than silently
-        missing. This keeps the verifier usable in environments where
-        OPA is not yet installed.
+      - If the SCC document's `rule_bundle_required` does not match the
+        active bundle, semantic checks are skipped and the attestation fails
+        with RULE-BUNDLE-MATCH.
+      - If the OPA binary is not discoverable, Layer 2 is marked INCOMPLETE
+        with a UserWarning; the attestation is still emitted, but it cannot
+        compose to PASS.
       - If `skip_layer_2=True` is passed, Layer 2 is skipped
-        unconditionally (useful for fast Layer-1-only lints).
+        unconditionally and marked INCOMPLETE for structurally valid
+        documents.
 
     If no signing_key is supplied, an ephemeral keypair is generated with
     a UserWarning. The resulting attestation is cryptographically valid
@@ -275,6 +283,50 @@ def verify(
             detail="Schema validation errors: " + "; ".join(schema_result.errors[:5]),
         )
 
+    bundle_required = scc_document.get("rule_bundle_required")
+    if bundle_required == _bundle.BUNDLE_ID:
+        rule_bundle_check = CheckResult(
+            id="RULE-BUNDLE-MATCH",
+            rule="document_requires_active_rule_bundle",
+            layer="structural",
+            status="PASS",
+            detail=f"Document requires active rule bundle {_bundle.BUNDLE_ID}",
+            observed_value={
+                "required": bundle_required,
+                "active": _bundle.BUNDLE_ID,
+            },
+        )
+    elif isinstance(bundle_required, str):
+        rule_bundle_check = CheckResult(
+            id="RULE-BUNDLE-MATCH",
+            rule="document_requires_active_rule_bundle",
+            layer="structural",
+            status="FAIL",
+            detail=(
+                f"Document requires rule bundle {bundle_required!r}, but the active "
+                f"verifier bundle is {_bundle.BUNDLE_ID!r}"
+            ),
+            observed_value={
+                "required": bundle_required,
+                "active": _bundle.BUNDLE_ID,
+            },
+        )
+    else:
+        rule_bundle_check = CheckResult(
+            id="RULE-BUNDLE-MATCH",
+            rule="document_requires_active_rule_bundle",
+            layer="structural",
+            status="NOT_APPLICABLE",
+            detail=(
+                "skipped: rule_bundle_required is missing or not a string; "
+                "schema validation will fail"
+            ),
+            observed_value={
+                "required": bundle_required,
+                "active": _bundle.BUNDLE_ID,
+            },
+        )
+
     # Layer 2 — Rego rule evaluation (value + judgment rules).
     # Deliberately exclude STRUCT-001 from the Rego-evaluated set here: we
     # already ran the JSON-Schema version above as the authoritative Layer 1
@@ -282,28 +334,38 @@ def verify(
     # check; the Rego STRUCT-001 is retained for third-party reproducibility
     # but not wired into the default attestation.
     layer_2_checks: tuple[CheckResult, ...] = ()
-    if skip_layer_2 or not schema_result.valid:
-        # Document structurally broken, or caller explicitly asked to skip.
-        # Produce NOT_APPLICABLE entries so consumers see the rule registry
-        # surface without having to re-derive what would have been evaluated.
+    rule_bundle_matches = rule_bundle_check.status == "PASS"
+    if skip_layer_2 or not schema_result.valid or not rule_bundle_matches:
+        # Document structurally broken, bundle mismatch, or caller explicitly
+        # asked to skip. Produce explicit entries so consumers see the rule
+        # registry surface without re-deriving what would have been evaluated.
+        if skip_layer_2 and schema_result.valid and rule_bundle_matches:
+            skipped_status: CheckStatus = "INCOMPLETE"
+            skipped_detail = "skipped: caller requested skip_layer_2"
+        elif not schema_result.valid:
+            skipped_status = "NOT_APPLICABLE"
+            skipped_detail = "skipped: document failed Layer 1 schema validation"
+        else:
+            skipped_status = "NOT_APPLICABLE"
+            skipped_detail = "skipped: document requires a different rule bundle"
+
+        # Emit a placeholder per registered rule so consumers can see the
+        # exact rule surface that did not run.
         layer_2_checks = tuple(
             CheckResult(
                 id=r.id,
                 rule=r.result_var,
                 layer=_infer_layer_from_package(r.package),
-                status="NOT_APPLICABLE",
-                detail=(
-                    "skipped: caller requested skip_layer_2"
-                    if skip_layer_2
-                    else "skipped: document failed Layer 1 schema validation"
-                ),
+                status=skipped_status,
+                detail=skipped_detail,
             )
             for r in _rego.RULE_REGISTRY
             if r.id != "STRUCT-001"
         )
     elif not _rego.is_opa_available():
         warnings.warn(
-            "OPA binary not found; skipping Layer 2 rule evaluation. "
+            "OPA binary not found; Layer 2 rule evaluation is incomplete and "
+            "the attestation cannot produce PASS. "
             "Install with `brew install opa` (macOS) or see "
             "scc_verifier.rego_evaluator.find_opa for full instructions.",
             UserWarning,
@@ -314,8 +376,8 @@ def verify(
                 id=r.id,
                 rule=r.result_var,
                 layer=_infer_layer_from_package(r.package),
-                status="NOT_APPLICABLE",
-                detail="skipped: OPA binary not available in this environment",
+                status="INCOMPLETE",
+                detail="incomplete: OPA binary not available in this environment",
             )
             for r in _rego.RULE_REGISTRY
             if r.id != "STRUCT-001"
@@ -327,12 +389,12 @@ def verify(
             layer_2_checks = tuple(c for c in all_rego_checks if c.id != "STRUCT-001")
         except Exception as e:
             # OPA present but evaluation blew up mid-flight. Mark rules
-            # NOT_APPLICABLE with the exception message rather than killing
-            # the verify call — the Layer 1 attestation is still useful and
-            # self-validates.
+            # INCOMPLETE with the exception class rather than killing the
+            # verify call — the Layer 1 attestation is still useful and
+            # self-validates, but cannot compose to PASS.
             warnings.warn(
                 f"Layer 2 evaluation failed: {type(e).__name__}: {e}. "
-                f"Emitting attestation with Layer 1 only.",
+                f"Emitting incomplete attestation with Layer 1 only.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -341,14 +403,14 @@ def verify(
                     id=r.id,
                     rule=r.result_var,
                     layer=_infer_layer_from_package(r.package),
-                    status="NOT_APPLICABLE",
-                    detail=f"skipped: Layer 2 evaluator raised {type(e).__name__}",
+                    status="INCOMPLETE",
+                    detail=f"incomplete: Layer 2 evaluator raised {type(e).__name__}",
                 )
                 for r in _rego.RULE_REGISTRY
                 if r.id != "STRUCT-001"
             )
 
-    checks = (layer_1_check,) + layer_2_checks
+    checks = (layer_1_check, rule_bundle_check) + layer_2_checks
 
     subject = AttestationSubject(
         scc_id=scc_document.get("scc_id", "UNKNOWN"),

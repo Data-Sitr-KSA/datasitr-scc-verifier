@@ -212,7 +212,7 @@ def evaluate_rules(scc_document: dict[str, Any]) -> tuple[CheckResult, ...]:
 
     Returns one CheckResult per rule. Raises OpaNotFoundError if the OPA
     binary isn't discoverable — caller decides how to react (the api.verify
-    path degrades gracefully to Layer-1-only when OPA is absent).
+    path emits an INCOMPLETE attestation when OPA is absent).
 
     Implementation note: we issue one `opa eval` per rule. This is
     simpler than one bulk query that returns everything, avoids the

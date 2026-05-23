@@ -41,17 +41,18 @@
           }
         },
         "verdict": {
-          "enum": ["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS"]
+          "enum": ["PASS", "FAIL", "PASS_WITH_COUNSEL_ITEMS", "INCOMPLETE"]
         },
         "summary": {
           "type": "object",
-          "required": ["total_rules", "passed", "failed", "requires_human_review", "not_applicable"],
+          "required": ["total_rules", "passed", "failed", "requires_human_review", "not_applicable", "incomplete"],
           "properties": {
             "total_rules": { "type": "integer", "minimum": 0 },
             "passed": { "type": "integer", "minimum": 0 },
             "failed": { "type": "integer", "minimum": 0 },
             "requires_human_review": { "type": "integer", "minimum": 0 },
-            "not_applicable": { "type": "integer", "minimum": 0 }
+            "not_applicable": { "type": "integer", "minimum": 0 },
+            "incomplete": { "type": "integer", "minimum": 0 }
           }
         },
         "checks": {
@@ -98,7 +99,7 @@
           "enum": ["structural", "value", "reference", "evidence", "freshness", "anchor", "judgment"]
         },
         "status": {
-          "enum": ["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE"]
+          "enum": ["PASS", "FAIL", "REQUIRES_HUMAN_REVIEW", "NOT_APPLICABLE", "INCOMPLETE"]
         },
         "detail": { "type": "string" },
         "observed_value": {},

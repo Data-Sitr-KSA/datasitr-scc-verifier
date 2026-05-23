@@ -4,13 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datasitr-scc-verifier"
-version = "0.2.0"
-description = "Machine-verifiable compliance for SDAIA Standard Contractual Clauses under the Saudi PDPL."
+version = "0.2.1"
+description = "Draft verifier for machine-checkable elements of Saudi SCC transfer documentation."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Data Sitr Est." }]
-keywords = ["pdpl", "sdaia", "scc", "privacy", "compliance", "saudi-arabia"]
+keywords = [
+    "sdaia",
+    "scc",
+    "pdpl",
+    "saudi-arabia",
+    "data-transfer",
+    "compliance",
+    "verifier",
+    "json-schema",
+    "open-policy-agent",
+    "rego",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Legal Industry",
@@ -19,6 +30,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security :: Cryptography",
 ]
 
@@ -45,10 +57,17 @@ scc-verify = "scc_verifier.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier"
+Repository = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier"
 Issues = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/issues"
+Changelog = "https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["scc_verifier"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "schemas"
+"rules" = "rules"
+"test_vectors" = "test_vectors"
 
 [tool.ruff]
 line-length = 100

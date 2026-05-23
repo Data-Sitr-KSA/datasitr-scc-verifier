@@ -80,6 +80,22 @@ def test_bundle_id_does_not_conflate_with_build_date() -> None:
     )
 
 
+def test_shipped_vectors_require_active_bundle() -> None:
+    """The reproducibility corpus must not drift from the active bundle ID."""
+    import json
+
+    vectors_root = Path(__file__).parent.parent / "test_vectors"
+    for scc_path in vectors_root.glob("**/*.json"):
+        if scc_path.name.endswith(".expected.json"):
+            continue
+        with scc_path.open() as f:
+            scc = json.load(f)
+        assert scc.get("rule_bundle_required") == BUNDLE_ID, (
+            f"{scc_path.relative_to(vectors_root)} requires "
+            f"{scc.get('rule_bundle_required')!r}, expected {BUNDLE_ID!r}"
+        )
+
+
 def test_bundle_manifest_includes_test_vectors() -> None:
     """Test vectors are part of the public reproducibility contract, so
     their bytes must be covered by the bundle hash. If this test fails,
