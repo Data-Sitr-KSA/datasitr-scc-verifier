@@ -15,13 +15,11 @@ It does **not** verify the official signed SCC contract text, template selection
 
 This is an experimental reference implementation released for technical review. The intended use is transparent, reproducible checking of a canonical representation, not replacement of Saudi-licensed counsel.
 
-> **Note on the OpenSSF Scorecard badge:** the workflow runs on every push to `main`, uploads SARIF to the Security tab, and publishes results to the public Scorecard API.
-
 ## Status
 
-**Version:** 0.2.1-draft (pre-counsel-review)
-**Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
-**License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
+- **Version:** 0.2.1-draft (pre-counsel-review)
+- **Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
+- **License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
 ## What v0.2 actually does (scope ratchet; read this before citing)
 
@@ -33,7 +31,7 @@ This is an experimental reference implementation released for technical review. 
 | **3. Evidence/reference/freshness** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists, freshness windows, and W3C Verifiable Credentials. | **Deferred to v0.3+.** Not implemented in v0.2. |
 | **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
 
-v0.2 is a floor, not a ceiling. The public envelope format, schemas, and rule-bundle-hash semantics are stable; new rules ratchet upward through v0.3 and v1.0 without breaking attestations produced under prior bundles.
+v0.2 is a floor, not a ceiling. The envelope schema, rule-bundle ID, and rule-bundle hash are versioned so future rule additions can preserve reproducibility for attestations produced under prior bundles.
 
 ## Runtime requirement: OPA binary
 
@@ -70,7 +68,7 @@ Every primitive is a well-reviewed standard. No novel cryptography.
 - **Open Policy Agent / Rego** for semantic and judgment rules
 - **W3C Verifiable Credentials v2.0** for evidence and attestation envelopes
 - **NIST OSCAL** referenced for TOMs structure
-- **Saudi Electronic Transactions Law (Royal Decree M/18)** recognises the electronic-signature posture
+- **Saudi Electronic Transactions Law (Royal Decree M/18)** referenced as electronic-signature context, not as a legal-validity determination
 - **Saudi PDPL (Royal Decree M/19) + Data Transfer Regulations 2024-09-01** — rule source
 
 ## Quick start

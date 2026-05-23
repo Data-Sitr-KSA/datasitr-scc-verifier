@@ -1,10 +1,8 @@
 # CodeQL — static analysis (SAST) for Python.
 #
 # Runs GitHub's CodeQL engine against the Python source in scc_verifier/.
-# Free on public repos; on private repos it requires GitHub Advanced
-# Security, which this project does not use. The workflow is still safe
-# to keep enabled while private — CodeQL will no-op on private repos
-# without GHAS rather than fail the workflow.
+# CodeQL is free for this public repository and uploads findings to
+# GitHub code scanning.
 #
 # Why CodeQL on top of ruff + mypy:
 #   - ruff catches style and trivially-wrong patterns.
@@ -39,10 +37,8 @@ jobs:
     name: CodeQL analysis (python)
     runs-on: ubuntu-latest
 
-    # CodeQL is free on PUBLIC repositories; on private repos it requires
-    # GitHub Advanced Security (a paid add-on). Skip the job while private
-    # rather than fail with "Advanced Security must be enabled."
-    # Auto-activates when the repo flips public.
+    # Keep this guard so private forks do not fail without GitHub Advanced
+    # Security; the canonical repository is public and runs this job.
     if: github.event.repository.private == false
 
     steps:
