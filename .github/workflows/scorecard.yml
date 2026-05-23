@@ -13,15 +13,8 @@
 #     OpenSSF Scorecard public API, which feeds the live badge at
 #     api.securityscorecards.dev.
 #
-# Visibility gate: Scorecard's public-publishing path only works for
-# PUBLIC repositories. While `datasitr-scc-verifier` is still private,
-# `publish_results` stays false and
-# SARIF upload is limited to CI artifacts; the workflow still runs and
-# produces a local scorecard so regressions are caught pre-flip.
-#
-# At the public-flip, set `publish_results: true` and re-enable
-# SARIF upload to code-scanning in the same commit. The README badge
-# lights up automatically once OSSF indexes the first public run.
+# This repository is public, so Scorecard publishes results to the public API
+# and uploads SARIF to GitHub code scanning.
 #
 # Reference: https://github.com/ossf/scorecard-action
 
@@ -67,25 +60,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@v2.4.1
+        uses: ossf/scorecard-action@v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
-          # Flip these two to `true` at the public-flip. Until then:
-          #   publish_results=false: no API publish (requires public repo)
-          #   repo_token uses default (GITHUB_TOKEN) which is sufficient
-          #     for inspecting this repo's own state.
-          publish_results: false
+          publish_results: true
 
       # Persist the SARIF as a build artifact so a reviewer can download
       # and inspect it locally even while the repo is private.
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scorecard-sarif
           path: results.sarif
@@ -96,6 +85,6 @@ jobs:
       # an artifact but doesn't clutter the Security tab on every cron.
       - name: Upload to code-scanning
         if: github.event_name == 'push'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif

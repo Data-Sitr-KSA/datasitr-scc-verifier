@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://img.shields.io/badge/OpenSSF_Scorecard-configured-lightgrey?logo=opensourcesecurity)](.github/workflows/scorecard.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Data-Sitr-KSA/datasitr-scc-verifier/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Data-Sitr-KSA/datasitr-scc-verifier)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
 [![Draft SCC canonical verifier](https://img.shields.io/badge/SCC_verifier-draft_canonical_form-informational)](schemas/scc-canonical-v1.json)
@@ -15,7 +15,7 @@ It does **not** verify the official signed SCC contract text, template selection
 
 This is an experimental reference implementation released for technical review. The intended use is transparent, reproducible checking of a canonical representation, not replacement of Saudi-licensed counsel.
 
-> **Note on the OpenSSF Scorecard badge:** the workflow is configured and runs on every push to `main`; it uploads SARIF to the Security tab. The live Scorecard badge (fed by `api.securityscorecards.dev`) activates automatically once the repository is public and Scorecard has indexed a run. Until then, the placeholder badge links to the workflow definition so reviewers can inspect the configured security posture directly.
+> **Note on the OpenSSF Scorecard badge:** the workflow runs on every push to `main`, uploads SARIF to the Security tab, and publishes results to the public Scorecard API.
 
 ## Status
 
