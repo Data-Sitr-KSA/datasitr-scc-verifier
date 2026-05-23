@@ -2,12 +2,13 @@
 
 Subcommands:
   verify              Run verification against a single SCC document.
-  verify-attestation  Verify an attestation signature with a public key.
+  verify-attestation  Verify an attestation signature with a public key or registry.
   run-vectors         Run the packaged test-vector corpus.
   keygen              Generate a new Ed25519 signing keypair.
+  keys list           List keys in a public key registry.
   bundle info         Show the active rule-bundle identity, hash, and manifest.
 
-v0.2 scope: Layer 1 structural validation + Layer 2 Rego rule evaluation
+v0.3 scope: Layer 1 structural validation + Layer 2 Rego rule evaluation
 via the OPA binary + real Ed25519 attestation signing.
 """
 
@@ -17,6 +18,7 @@ import argparse
 import json
 import sys
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 from scc_verifier import __version__, self_validate
@@ -28,6 +30,7 @@ from scc_verifier.bundle import (
     bundle_manifest,
     compute_bundle_hash,
 )
+from scc_verifier.key_registry import KeyRegistry, RegistryError, load_registry
 from scc_verifier.signing import (
     generate_keypair,
     load_private_key,
@@ -42,6 +45,16 @@ def _load_json(path: Path) -> dict:
     with path.open() as f:
         loaded: dict = json.load(f)
     return loaded
+
+
+def _iso_z(dt: datetime) -> str:
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _registry_load_error_code(error: RegistryError) -> int:
+    if str(error).startswith("only https://"):
+        return 2
+    return 1
 
 
 def _is_incomplete_without_opa(envelope: dict) -> bool:
@@ -125,8 +138,8 @@ def _cmd_run_vectors(args: argparse.Namespace) -> int:
     """Run packaged test vectors.
 
     Each vector's `<basename>.expected.json` declares the expected outcome.
-    v0.2 evaluates Layer 1 (schema) plus Layer 2 (Rego rules) via OPA, so
-    vectors are matched against this priority order:
+    The current verifier evaluates Layer 1 (schema) plus Layer 2 (Rego rules)
+    via OPA, so vectors are matched against this priority order:
 
         1. `v0_2_expected`   (preferred — current code version)
         2. `verdict`         (v1.0 target, same shape)
@@ -166,7 +179,7 @@ def _cmd_run_vectors(args: argparse.Namespace) -> int:
                 print(f"  SKIP  {cat}/{scc_file.name}  — {reason}")
                 continue
 
-            # Expectation priority: v0.2 → v1.0 target → v0.1 legacy.
+            # Expectation priority: current expected field → v1.0 target → v0.1 legacy.
             want = (
                 expected.get("v0_2_expected")
                 or expected.get("verdict")
@@ -261,18 +274,36 @@ def _cmd_verify_attestation(args: argparse.Namespace) -> int:
     if not attestation_path.exists():
         print(f"error: attestation file not found: {attestation_path}", file=sys.stderr)
         return 2
-    public_key_path = Path(args.public_key)
-    if not public_key_path.exists():
-        print(f"error: public key file not found: {public_key_path}", file=sys.stderr)
-        return 2
 
     envelope = _load_json(attestation_path)
-    public_key = load_public_key(public_key_path)
-    result = verify_attestation_envelope(
-        envelope,
-        public_key,
-        require_verification_method_match=not args.allow_key_mismatch,
-    )
+    if args.key_registry:
+        try:
+            key_source = load_registry(args.key_registry)
+        except FileNotFoundError:
+            print(f"error: registry file not found: {args.key_registry}", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"error: could not read registry: {e}", file=sys.stderr)
+            return 2
+        except RegistryError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return _registry_load_error_code(e)
+        result = verify_attestation_envelope(envelope, key_source)
+    else:
+        public_key_path = Path(args.public_key)
+        if not public_key_path.exists():
+            print(f"error: public key file not found: {public_key_path}", file=sys.stderr)
+            return 2
+        try:
+            public_key = load_public_key(public_key_path)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+        result = verify_attestation_envelope(
+            envelope,
+            public_key,
+            require_verification_method_match=not args.allow_key_mismatch,
+        )
 
     if args.format == "json":
         print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
@@ -284,6 +315,55 @@ def _cmd_verify_attestation(args: argparse.Namespace) -> int:
         for error in result.errors:
             print(f"error: {error}", file=sys.stderr)
     return 0 if result.valid else 1
+
+
+def _registry_to_dict(registry: KeyRegistry) -> dict:
+    return {
+        "schema_version": registry.schema_version,
+        "issuer": registry.issuer,
+        "generated_at": _iso_z(registry.generated_at),
+        "keys": [
+            {
+                "id": key.id,
+                "status": key.status,
+                "not_before": _iso_z(key.not_before),
+                "not_after": _iso_z(key.not_after) if key.not_after is not None else None,
+                "purpose": key.purpose,
+            }
+            for key in registry.keys
+        ],
+    }
+
+
+def _cmd_keys_list(args: argparse.Namespace) -> int:
+    try:
+        registry = load_registry(args.registry)
+    except (OSError, RegistryError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    if not registry.keys:
+        print("error: registry contains no keys", file=sys.stderr)
+        return 1
+
+    payload = _registry_to_dict(registry)
+    if args.format == "json":
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    print(f"Issuer:       {registry.issuer}")
+    print(f"Schema:       {registry.schema_version}")
+    print(f"Generated at: {_iso_z(registry.generated_at)}")
+    print("Keys:")
+    for key in registry.keys:
+        not_after = _iso_z(key.not_after) if key.not_after is not None else "-"
+        purpose = key.purpose if key.purpose is not None else "-"
+        print(
+            f"  {key.id}  status={key.status}  "
+            f"not_before={_iso_z(key.not_before)}  not_after={not_after}  "
+            f"purpose={purpose}"
+        )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -322,22 +402,29 @@ def main(argv: list[str] | None = None) -> int:
 
     p_verify_attestation = sub.add_parser(
         "verify-attestation",
-        help="Verify an attestation envelope signature with an Ed25519 public key",
+        help="Verify an attestation envelope signature with an Ed25519 public key or registry",
     )
     p_verify_attestation.add_argument(
         "--attestation",
         required=True,
         help="Path to attestation envelope JSON",
     )
-    p_verify_attestation.add_argument(
+    key_source = p_verify_attestation.add_mutually_exclusive_group(required=True)
+    key_source.add_argument(
         "--public-key",
-        required=True,
         help="Path to Ed25519 public key PEM",
+    )
+    key_source.add_argument(
+        "--key-registry",
+        help="HTTPS URL, file:// URL, or local path to a public key registry JSON file",
     )
     p_verify_attestation.add_argument(
         "--allow-key-mismatch",
         action="store_true",
-        help="Verify the signature even if proof.verificationMethod does not match the public key id",
+        help=(
+            "Verify the signature even if proof.verificationMethod does not match the public "
+            "key id. Has no effect with --key-registry, which always resolves by key id."
+        ),
     )
     p_verify_attestation.add_argument(
         "--format",
@@ -346,6 +433,28 @@ def main(argv: list[str] | None = None) -> int:
         help="Output format (default: human).",
     )
     p_verify_attestation.set_defaults(func=_cmd_verify_attestation)
+
+    p_keys = sub.add_parser(
+        "keys",
+        help="Inspect public key registries.",
+    )
+    keys_sub = p_keys.add_subparsers(dest="keys_cmd", required=True)
+    p_keys_list = keys_sub.add_parser(
+        "list",
+        help="List keys from a public key registry.",
+    )
+    p_keys_list.add_argument(
+        "--registry",
+        required=True,
+        help="HTTPS URL, file:// URL, or local path to a public key registry JSON file",
+    )
+    p_keys_list.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Output format (default: human).",
+    )
+    p_keys_list.set_defaults(func=_cmd_keys_list)
 
     p_bundle = sub.add_parser(
         "bundle",

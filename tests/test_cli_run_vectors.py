@@ -39,7 +39,7 @@ def test_run_vectors_exits_zero_when_all_match() -> None:
 
 @opa_required
 def test_verify_exits_zero_on_known_good(tmp_path) -> None:
-    """In v0.2 the known-good vector evaluates to PASS_WITH_COUNSEL_ITEMS
+    """The known-good vector evaluates to PASS_WITH_COUNSEL_ITEMS
     because the 3 judgment rules (liability, gov access, indemnification)
     correctly emit REQUIRES_HUMAN_REVIEW on every structurally-valid SCC.
     That is the intended Layer-2 behavior — the verifier flags, not decides.

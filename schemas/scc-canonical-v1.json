@@ -36,7 +36,7 @@
     },
     "scc_template": {
       "type": "object",
-      "description": "SDAIA SCC role-template selected for this transfer. v0.2 validates declared role-pair consistency; official text hashing and permitted-blank verification are deferred.",
+      "description": "SDAIA SCC role-template selected for this transfer. v0.3 validates declared role-pair consistency; official text hashing and permitted-blank verification are deferred.",
       "required": ["template_id", "exporter_role", "importer_role"],
       "properties": {
         "template_id": {

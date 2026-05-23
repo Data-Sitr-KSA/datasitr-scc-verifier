@@ -24,7 +24,7 @@ Rule registry:
   and query expression. Adding a rule = adding a row in `RULE_REGISTRY`
   plus authoring the corresponding .rego file. No other code changes.
 
-For v0.2 we evaluate the 8 already-authored Layer-2 / judgment rules
+For v0.3 we evaluate the 9 already-authored Layer-2 / judgment rules
 plus the STRUCT-001 rule (the latter can also be evaluated via Layer 1
 schema validation, but running it through OPA too is a cheap
 consistency check against the schema).
@@ -219,7 +219,7 @@ def evaluate_rules(scc_document: dict[str, Any]) -> tuple[CheckResult, ...]:
     caller having to walk a nested object, and keeps error messages
     scoped to the rule that failed. Performance is fine — OPA startup is
     ~20ms per call, rule evaluation is microseconds, and the rule count
-    is ~10 for v0.2.
+    is ~10 for v0.3.
     """
     opa_bin = find_opa()
     input_doc = _build_input(scc_document)

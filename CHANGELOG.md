@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file. Every
 rule-bundle version carries a dated identifier (`sdaia-scc-vX.Y-YYYY-MM-DD`)
 so historical attestations remain reproducible.
 
+## [0.3.0-draft] - 2026-05-23
+
+### Added
+
+- Public key registry consumption for attestation verification from HTTPS URLs,
+  `file://` URLs, and local registry files.
+- `scc-verify verify-attestation --key-registry LOCATION`, which resolves the
+  attestation `proof.verificationMethod` against a validated registry, enforces
+  issuer matching, rejects revoked keys, and checks the key time window.
+- `scc-verify keys list --registry LOCATION` for operator inspection of a
+  freshly deployed registry.
+
+### Changed
+
+- `schemas/public-key-registry-v1.json` now requires top-level
+  `schema_version: "1"` and per-key `not_before`, and allows an informational
+  per-key `purpose` field.
+- The registry `issuer` description now makes byte-identical comparison with
+  attestation envelopes explicit.
+- README and `docs/public-key-registry.md` now document the v0.3 registry trust
+  boundary and the offline production-key procedure.
+
+### Trust model
+
+- TLS is the v0.3 trust anchor for remote registry retrieval. Offline-signed
+  registries, DID dereferencing, caching, and federation remain v0.4+ work
+  tracked from [issue #10](https://github.com/Data-Sitr-KSA/datasitr-scc-verifier/issues/10).
+- Not ratified by SDAIA. Not reviewed by Saudi-licensed counsel.
+
+---
+
 ## [0.2.2-draft] - 2026-05-23
 
 ### Changed

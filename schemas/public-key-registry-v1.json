@@ -4,12 +4,15 @@
   "title": "SCC Verifier Public Key Registry v1",
   "description": "Public key registry shape for verifier deployments that publish Ed25519 verification keys at /.well-known/scc-verifier-keys.json. This schema does not publish or imply any DataSitr production key.",
   "type": "object",
-  "required": ["issuer", "generated_at", "keys"],
+  "required": ["schema_version", "issuer", "generated_at", "keys"],
   "properties": {
+    "schema_version": {
+      "const": "1"
+    },
     "issuer": {
       "type": "string",
       "format": "uri",
-      "description": "Issuer DID or URI used in attestation envelopes."
+      "description": "Issuer identifier used in attestation envelopes. Verifiers MUST compare this byte-identically to the envelope's `issuer` field before trusting any key in this registry."
     },
     "generated_at": {
       "type": "string",
@@ -20,7 +23,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "type", "public_key_pem", "status"],
+        "required": ["id", "type", "public_key_pem", "status", "not_before"],
         "properties": {
           "id": {
             "type": "string",
@@ -43,6 +46,9 @@
           "not_after": {
             "type": "string",
             "format": "date-time"
+          },
+          "purpose": {
+            "type": "string"
           }
         },
         "additionalProperties": false

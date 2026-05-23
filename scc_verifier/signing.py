@@ -5,17 +5,16 @@ canonicalized envelope (minus the proof block). A third party with the
 public key can independently verify the signature; without it, the
 attestation is a suggestion, not a claim.
 
-v0.1 signing posture:
+v0.3 signing posture:
   - If a signing key is supplied via CLI or API, use it.
   - If not, generate an ephemeral key per run and emit a loud warning.
     The attestation is still cryptographically valid — it just isn't tied
     to any long-lived identity. Useful for demos, CI, and first-time use;
     not useful for anything anyone should rely on.
 
-Key rotation / registration is out of scope for v0.1. The intended
-production pattern is:
+The intended production pattern is:
   1. Generate a keypair with `scc-verify keygen --out key.ed25519`.
-  2. Publish the public key at a DID-addressable location
+  2. Publish the public key in a registry
      (e.g., `https://<yourdomain>/.well-known/scc-verifier-keys.json`).
   3. Pass `--signing-key key.ed25519` on every verify run.
 
