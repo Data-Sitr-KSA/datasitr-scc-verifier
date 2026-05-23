@@ -8,6 +8,7 @@ from typing import Any
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from scc_verifier.canonicalization import canonicalize
+from scc_verifier.key_registry import KeyRegistry, RegistryError, find_key_for_envelope
 from scc_verifier.schema_validator import validate_attestation_envelope
 from scc_verifier.signing import public_key_sha256, verify_signature
 
@@ -66,7 +67,7 @@ def signature_payload(envelope: dict[str, Any]) -> bytes:
 
 def verify_attestation_envelope(
     envelope: dict[str, Any],
-    public_key: Ed25519PublicKey,
+    public_key: Ed25519PublicKey | KeyRegistry,
     *,
     require_verification_method_match: bool = True,
 ) -> AttestationVerificationResult:
@@ -85,6 +86,34 @@ def verify_attestation_envelope(
         )
 
     proof = envelope["proof"]
+    if isinstance(public_key, KeyRegistry):
+        try:
+            registry_key = find_key_for_envelope(public_key, envelope)
+        except RegistryError as e:
+            errors.append(f"{type(e).__name__}: {e}")
+            return AttestationVerificationResult(
+                schema_valid=True,
+                signature_valid=False,
+                verification_method_matches_key=False,
+                verification_method_match_required=True,
+                errors=tuple(errors),
+            )
+
+        signature_valid = verify_signature(
+            registry_key.public_key,
+            signature_payload(envelope),
+            proof["proofValue"],
+        )
+        if not signature_valid:
+            errors.append("proofValue signature is invalid for the registry-resolved public key")
+        return AttestationVerificationResult(
+            schema_valid=True,
+            signature_valid=signature_valid,
+            verification_method_matches_key=True,
+            verification_method_match_required=True,
+            errors=tuple(errors),
+        )
+
     expected_fragment = f"#key-{public_key_sha256(public_key)}"
     method = proof["verificationMethod"]
     method_matches = method.endswith(expected_fragment)

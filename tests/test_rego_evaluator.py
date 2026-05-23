@@ -36,7 +36,7 @@ opa_required = pytest.mark.skipif(
 
 
 def test_rule_registry_is_non_empty() -> None:
-    """Sanity: the registry must define at least the 9 v0.2 rules."""
+    """Sanity: the registry must define at least the 9 shipped rules."""
     assert len(RULE_REGISTRY) >= 9
     ids = {r.id for r in RULE_REGISTRY}
     for expected in (
@@ -107,7 +107,7 @@ def test_foreign_governing_law_fires_fail() -> None:
 
 @opa_required
 def test_sensitive_plus_onward_transfer_requires_counsel_review() -> None:
-    """Article 18 sensitive data + onward transfer is counsel-review in v0.2."""
+    """Article 18 sensitive data + onward transfer is counsel-review."""
     scc = _load(VECTORS / "judgment_required" / "sensitive_onward_transfer_needs_counsel.json")
     results = evaluate_rules(scc)
     by_id = {r.id: r for r in results}

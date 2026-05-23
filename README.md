@@ -9,7 +9,7 @@
 
 **Draft reference implementation for machine-checkable elements of Saudi SCC transfer documentation.**
 
-v0.2 validates the DataSitr canonical SCC JSON form, checks that the document requires the active rule bundle, evaluates a small initial Open Policy Agent/Rego rule bundle, flags judgment-bound fields for counsel review, and emits a signed draft attestation.
+v0.3 validates the DataSitr canonical SCC JSON form, checks that the document requires the active rule bundle, evaluates a small initial Open Policy Agent/Rego rule bundle, flags judgment-bound fields for counsel review, emits a signed draft attestation, and can verify attestations against a public key registry.
 
 It does **not** verify the official signed SCC contract text, template selection, permitted blanks, all role-specific obligations, conflicts with additional terms, evidence references, freshness, or complete SDAIA SCC conformity. It is not ratified by SDAIA and is not legal advice.
 
@@ -17,21 +17,21 @@ This is an experimental reference implementation released for technical review. 
 
 ## Status
 
-- **Version:** 0.2.2-draft (pre-counsel-review)
+- **Version:** 0.3.0-draft (pre-counsel-review)
 - **Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
 - **License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
-## What v0.2 actually does (scope ratchet; read this before citing)
+## What v0.3 actually does (scope ratchet; read this before citing)
 
-| Layer | What it is | v0.2 status |
+| Layer | What it is | v0.3 status |
 |---|---|---|
 | **1. Structural** | JSON Schema Draft 2020-12 validation of the SCC canonical JSON form, with `format: date` / `format: date-time` enforced via `FormatChecker`. | **Live and tested.** Regression tests cover missing clauses, bad date formats, out-of-range values, and enum violations. |
 | **1b. Bundle identity** | `rule_bundle_required` must match the active verifier bundle ID. | **Live and tested.** A mismatch produces `RULE-BUNDLE-MATCH: FAIL`; semantic rules are not treated as verified under the wrong bundle. |
 | **2. Semantic/judgment** | Rego rules (Open Policy Agent) encoding a small initial set of value-bound and judgment constraints. 9 rules are authored in `rules/` across 5 files. | **Live when OPA is available.** If OPA is missing, Layer 2 checks are marked `INCOMPLETE` and the overall verdict cannot be `PASS`. |
-| **3. Evidence/reference/freshness** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists, freshness windows, and W3C Verifiable Credentials. | **Deferred to v0.3+.** Not implemented in v0.2. |
-| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
+| **3. Evidence/reference/freshness** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists, freshness windows, and W3C Verifiable Credentials. | **Deferred.** Not implemented in v0.3. |
+| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). Attestations can be verified with a local public key or a validated public key registry. |
 
-v0.2 is a floor, not a ceiling. The envelope schema, rule-bundle ID, and rule-bundle hash are versioned so future rule additions can preserve reproducibility for attestations produced under prior bundles.
+v0.3 is a floor, not a ceiling. The envelope schema, rule-bundle ID, and rule-bundle hash are versioned so future rule additions can preserve reproducibility for attestations produced under prior bundles.
 
 ## Runtime requirement: OPA binary
 
@@ -107,6 +107,16 @@ scc-verify verify-attestation \
   --attestation attestation.json \
   --public-key ./keys/verifier.pub.pem
 ```
+
+### Verifying an attestation against the published key registry
+
+```bash
+scc-verify keys list --registry https://datasitr.com/.well-known/scc-verifier-keys.json
+scc-verify verify-attestation --attestation attestation.json \
+  --key-registry https://datasitr.com/.well-known/scc-verifier-keys.json
+```
+
+See [docs/public-key-registry.md](docs/public-key-registry.md) for the full operator and verification flow.
 
 The emitted attestation is **self-validated against `schemas/attestation-envelope-v1.json`** before it is written. If the envelope fails its own schema, `scc-verify verify` exits non-zero and does not emit the document.
 

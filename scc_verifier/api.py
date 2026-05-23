@@ -5,7 +5,7 @@ canonicalize (RFC 8785 JCS) reproducibly across verifier implementations.
 The full signed envelope also includes issuance time and signature metadata,
 so it is byte-identical across runs only when those inputs are fixed.
 
-Public API surface (stable for v0.2):
+Public API surface (stable for v0.3):
     validate_schema(scc_document) -> SchemaValidationResult
     verify(scc_document, signing_key=None) -> Attestation
     CheckResult, Attestation, AttestationSubject — dataclasses
@@ -194,9 +194,9 @@ def verify(
 ) -> Attestation:
     """Verify an SCC document and produce a signed attestation.
 
-    v0.2 evaluates Layer 1 (JSON Schema structural validation), an active
+    v0.3 evaluates Layer 1 (JSON Schema structural validation), an active
     rule-bundle identity check, and Layer 2 (Rego semantic + judgment rules
-    via the OPA binary). Layer 3 evidence resolution lands in v0.3.
+    via the OPA binary). Layer 3 evidence resolution remains deferred.
 
     Layer 2 evaluation is conditional:
       - If the document fails Layer 1, Layer 2 is skipped (structurally
