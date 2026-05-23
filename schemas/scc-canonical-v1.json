@@ -7,6 +7,7 @@
   "required": [
     "scc_id",
     "rule_bundle_required",
+    "scc_template",
     "parties",
     "subject_matter",
     "obligations",
@@ -32,6 +33,25 @@
     "rule_bundle_required": {
       "type": "string",
       "description": "Identifier of the rule bundle under which this SCC was constructed. Example: sdaia-scc-v1.0-2024-09-02"
+    },
+    "scc_template": {
+      "type": "object",
+      "description": "SDAIA SCC role-template selected for this transfer. v0.2 validates declared role-pair consistency; official text hashing and permitted-blank verification are deferred.",
+      "required": ["template_id", "exporter_role", "importer_role"],
+      "properties": {
+        "template_id": {
+          "enum": [
+            "controller_to_controller",
+            "controller_to_processor",
+            "processor_to_processor",
+            "processor_to_controller"
+          ]
+        },
+        "exporter_role": { "enum": ["CONTROLLER", "PROCESSOR"] },
+        "importer_role": { "enum": ["CONTROLLER", "PROCESSOR", "SUB_PROCESSOR"] },
+        "official_template_ref": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "parties": {
       "type": "object",
@@ -205,7 +225,125 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "scc_template": {
+            "properties": {
+              "template_id": { "const": "controller_to_controller" }
+            },
+            "required": ["template_id"]
+          }
+        }
+      },
+      "then": { "$ref": "#/$defs/template_controller_to_controller" }
+    },
+    {
+      "if": {
+        "properties": {
+          "scc_template": {
+            "properties": {
+              "template_id": { "const": "controller_to_processor" }
+            },
+            "required": ["template_id"]
+          }
+        }
+      },
+      "then": { "$ref": "#/$defs/template_controller_to_processor" }
+    },
+    {
+      "if": {
+        "properties": {
+          "scc_template": {
+            "properties": {
+              "template_id": { "const": "processor_to_processor" }
+            },
+            "required": ["template_id"]
+          }
+        }
+      },
+      "then": { "$ref": "#/$defs/template_processor_to_processor" }
+    },
+    {
+      "if": {
+        "properties": {
+          "scc_template": {
+            "properties": {
+              "template_id": { "const": "processor_to_controller" }
+            },
+            "required": ["template_id"]
+          }
+        }
+      },
+      "then": { "$ref": "#/$defs/template_processor_to_controller" }
+    }
+  ],
   "$defs": {
+    "template_controller_to_controller": {
+      "properties": {
+        "scc_template": {
+          "properties": {
+            "exporter_role": { "const": "CONTROLLER" },
+            "importer_role": { "const": "CONTROLLER" }
+          }
+        },
+        "parties": {
+          "properties": {
+            "exporter": { "properties": { "role": { "const": "CONTROLLER" } } },
+            "importer": { "properties": { "role": { "const": "CONTROLLER" } } }
+          }
+        }
+      }
+    },
+    "template_controller_to_processor": {
+      "properties": {
+        "scc_template": {
+          "properties": {
+            "exporter_role": { "const": "CONTROLLER" },
+            "importer_role": { "const": "PROCESSOR" }
+          }
+        },
+        "parties": {
+          "properties": {
+            "exporter": { "properties": { "role": { "const": "CONTROLLER" } } },
+            "importer": { "properties": { "role": { "const": "PROCESSOR" } } }
+          }
+        }
+      }
+    },
+    "template_processor_to_processor": {
+      "properties": {
+        "scc_template": {
+          "properties": {
+            "exporter_role": { "const": "PROCESSOR" },
+            "importer_role": { "const": "SUB_PROCESSOR" }
+          }
+        },
+        "parties": {
+          "properties": {
+            "exporter": { "properties": { "role": { "const": "PROCESSOR" } } },
+            "importer": { "properties": { "role": { "const": "SUB_PROCESSOR" } } }
+          }
+        }
+      }
+    },
+    "template_processor_to_controller": {
+      "properties": {
+        "scc_template": {
+          "properties": {
+            "exporter_role": { "const": "PROCESSOR" },
+            "importer_role": { "const": "CONTROLLER" }
+          }
+        },
+        "parties": {
+          "properties": {
+            "exporter": { "properties": { "role": { "const": "PROCESSOR" } } },
+            "importer": { "properties": { "role": { "const": "CONTROLLER" } } }
+          }
+        }
+      }
+    },
     "party": {
       "type": "object",
       "required": ["legal_name", "cr_number", "registered_address", "role"],

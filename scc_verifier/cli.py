@@ -1,10 +1,11 @@
 """scc-verify CLI.
 
 Subcommands:
-  verify         Run verification against a single SCC document.
-  run-vectors    Run the packaged test-vector corpus.
-  keygen         Generate a new Ed25519 signing keypair.
-  bundle info    Show the active rule-bundle identity, hash, and manifest.
+  verify              Run verification against a single SCC document.
+  verify-attestation  Verify an attestation signature with a public key.
+  run-vectors         Run the packaged test-vector corpus.
+  keygen              Generate a new Ed25519 signing keypair.
+  bundle info         Show the active rule-bundle identity, hash, and manifest.
 
 v0.2 scope: Layer 1 structural validation + Layer 2 Rego rule evaluation
 via the OPA binary + real Ed25519 attestation signing.
@@ -20,6 +21,7 @@ from pathlib import Path
 
 from scc_verifier import __version__, self_validate
 from scc_verifier import verify as verify_document
+from scc_verifier.attestation_verifier import verify_attestation_envelope
 from scc_verifier.bundle import (
     BUNDLE_BUILD_DATE,
     BUNDLE_ID,
@@ -29,7 +31,10 @@ from scc_verifier.bundle import (
 from scc_verifier.signing import (
     generate_keypair,
     load_private_key,
+    load_public_key,
+    public_key_sha256,
     save_private_key,
+    save_public_key,
 )
 
 
@@ -232,11 +237,53 @@ def _cmd_keygen(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.public_out:
+        public_out = Path(args.public_out)
+        if public_out.exists() and not args.force:
+            print(
+                f"error: {public_out} already exists; pass --force to overwrite",
+                file=sys.stderr,
+            )
+            return 2
     key = generate_keypair()
     save_private_key(key, out)
     print(f"Wrote Ed25519 private key to {out} (mode 0600)")
+    if args.public_out:
+        save_public_key(key.public_key(), public_out)
+        print(f"Wrote Ed25519 public key to {public_out}")
+    print(f"Public key id: key-{public_key_sha256(key.public_key())}")
     print("Guard this file. Do not commit it. See .gitignore for *.ed25519.")
     return 0
+
+
+def _cmd_verify_attestation(args: argparse.Namespace) -> int:
+    attestation_path = Path(args.attestation)
+    if not attestation_path.exists():
+        print(f"error: attestation file not found: {attestation_path}", file=sys.stderr)
+        return 2
+    public_key_path = Path(args.public_key)
+    if not public_key_path.exists():
+        print(f"error: public key file not found: {public_key_path}", file=sys.stderr)
+        return 2
+
+    envelope = _load_json(attestation_path)
+    public_key = load_public_key(public_key_path)
+    result = verify_attestation_envelope(
+        envelope,
+        public_key,
+        require_verification_method_match=not args.allow_key_mismatch,
+    )
+
+    if args.format == "json":
+        print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(f"Schema valid:        {result.schema_valid}")
+        print(f"Signature valid:     {result.signature_valid}")
+        print(f"Key id matches VC:   {result.verification_method_matches_key}")
+        print(f"Overall valid:       {result.valid}")
+        for error in result.errors:
+            print(f"error: {error}", file=sys.stderr)
+    return 0 if result.valid else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -269,8 +316,36 @@ def main(argv: list[str] | None = None) -> int:
 
     p_key = sub.add_parser("keygen", help="Generate an Ed25519 signing keypair")
     p_key.add_argument("--out", required=True, help="Output path for the private key")
+    p_key.add_argument("--public-out", help="Optional output path for the public key PEM")
     p_key.add_argument("--force", action="store_true", help="Overwrite existing file at --out")
     p_key.set_defaults(func=_cmd_keygen)
+
+    p_verify_attestation = sub.add_parser(
+        "verify-attestation",
+        help="Verify an attestation envelope signature with an Ed25519 public key",
+    )
+    p_verify_attestation.add_argument(
+        "--attestation",
+        required=True,
+        help="Path to attestation envelope JSON",
+    )
+    p_verify_attestation.add_argument(
+        "--public-key",
+        required=True,
+        help="Path to Ed25519 public key PEM",
+    )
+    p_verify_attestation.add_argument(
+        "--allow-key-mismatch",
+        action="store_true",
+        help="Verify the signature even if proof.verificationMethod does not match the public key id",
+    )
+    p_verify_attestation.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Output format (default: human).",
+    )
+    p_verify_attestation.set_defaults(func=_cmd_verify_attestation)
 
     p_bundle = sub.add_parser(
         "bundle",

@@ -43,7 +43,7 @@ def test_verify_is_deterministic_under_fixed_timestamp(monkeypatch) -> None:
 
     monkeypatch.setattr(api_module, "datetime", FixedDatetime)
 
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     signing_key = generate_keypair()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

@@ -45,13 +45,18 @@ from scc_verifier.api import (
     verdict_from_checks,
     verify,
 )
+from scc_verifier.attestation_verifier import (
+    AttestationVerificationResult,
+    verify_attestation_envelope,
+)
 from scc_verifier.schema_validator import SchemaValidationResult
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     "Attestation",
     "AttestationSubject",
+    "AttestationVerificationResult",
     "CheckLayer",
     "CheckResult",
     "CheckStatus",
@@ -59,6 +64,7 @@ __all__ = [
     "Verdict",
     "self_validate",
     "validate_schema",
+    "verify_attestation_envelope",
     "verdict_from_checks",
     "verify",
     "__version__",

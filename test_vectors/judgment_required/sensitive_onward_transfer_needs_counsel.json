@@ -1,6 +1,12 @@
 {
   "scc_id": "SCC-2026-04-003",
   "rule_bundle_required": "sdaia-scc-v0.1-2024-09-02",
+  "scc_template": {
+    "template_id": "controller_to_processor",
+    "exporter_role": "CONTROLLER",
+    "importer_role": "PROCESSOR",
+    "official_template_ref": "SDAIA SCC Second Template (Controller to Processor)"
+  },
   "parties": {
     "exporter": {
       "legal_name": "Example KSA Hospital",
@@ -10,10 +16,10 @@
       "role": "CONTROLLER"
     },
     "importer": {
-      "legal_name": "Data Sitr Est.",
-      "cr_number": "7040000000",
-      "registered_address": "Riyadh, Kingdom of Saudi Arabia",
-      "country": "SA",
+      "legal_name": "Example Foreign Health Processor Ltd.",
+      "cr_number": "GB-000000",
+      "registered_address": "London, United Kingdom",
+      "country": "GB",
       "role": "PROCESSOR"
     }
   },
@@ -21,7 +27,7 @@
     "data_categories": ["name", "national_id", "medical_record"],
     "data_subjects": ["patients"],
     "sensitive_categories_art18": ["health"],
-    "purpose": "clinical triage support",
+    "purpose": "cross-border clinical triage support",
     "transfer_basis": "standard_contractual_clauses",
     "duration": { "start": "2026-05-01", "end": "2027-04-30" }
   },
@@ -59,6 +65,6 @@
   "annex_c_subprocessors": [],
   "signatures": {
     "exporter": { "name": "Jane Doe", "title": "DPO", "signed_at": "2026-04-30T12:00:00Z", "signature_ref": "sig-exp" },
-    "importer": { "name": "John Smith", "title": "Founder", "signed_at": "2026-04-30T12:05:00Z", "signature_ref": "sig-imp" }
+    "importer": { "name": "John Smith", "title": "Authorized Signatory", "signed_at": "2026-04-30T12:05:00Z", "signature_ref": "sig-imp" }
   }
 }

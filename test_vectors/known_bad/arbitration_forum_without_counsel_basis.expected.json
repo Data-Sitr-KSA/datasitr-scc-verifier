@@ -1,0 +1,14 @@
+{
+  "verdict": "FAIL",
+  "v0_2_expected": "FAIL",
+  "notes": "Cross-border SCC canonical form using Saudi governing law but selecting Saudi Center for Commercial Arbitration as the dispute forum. v0.2 does not hard-pass arbitration because SDAIA's SCC text vests disputes in the Kingdom's courts; arbitration alternatives require a counsel-reviewed rule note before they can pass automatically.",
+  "required_check_ids_fail": [
+    "VAL-DISPUTE-FORUM"
+  ],
+  "required_check_ids_human_review": [
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ],
+  "regulatory_posture": "The draft verifier treats arbitration language as non-conforming unless a future counsel-reviewed rule bundle explicitly recognizes the forum."
+}

@@ -1,0 +1,18 @@
+{
+  "verdict": "PASS_WITH_COUNSEL_ITEMS",
+  "v0_1_expected": "PASS",
+  "notes": "Draft cross-border controller-to-processor SCC canonical form: KSA exporter, foreign processor importer, no Article 18 sensitive categories, proper notification windows, and Saudi governing law/court forum. In v0.1 this produced PASS based on Layer 1 (schema) alone. In v0.2+ it produces PASS_WITH_COUNSEL_ITEMS because judgment-bound clauses are flagged for counsel review.",
+  "required_check_ids_pass_v1_0": [
+    "STRUCT-001",
+    "VAL-GOV-LAW",
+    "VAL-DISPUTE-FORUM",
+    "VAL-BREACH-EXPORTER",
+    "VAL-BREACH-SDAIA",
+    "VAL-SENSITIVE-ROUTE"
+  ],
+  "required_check_ids_human_review_v1_0": [
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ]
+}

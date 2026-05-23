@@ -1,0 +1,21 @@
+{
+  "verdict": "PASS_WITH_COUNSEL_ITEMS",
+  "v0_2_expected": "PASS_WITH_COUNSEL_ITEMS",
+  "notes": "SCC declares a PDPL Article 18 sensitive category (health data) and permits onward transfers. v0.2 does not claim this is automatically forbidden; VAL-SENSITIVE-ROUTE flags REQUIRES_HUMAN_REVIEW so counsel can confirm SCC accession, template fit, additional safeguards, and transfer-risk assessment evidence.",
+  "required_check_ids_human_review": [
+    "VAL-SENSITIVE-ROUTE",
+    "JUDGE-LIAB-001",
+    "JUDGE-GOV-ACCESS-001",
+    "JUDGE-INDEM-001"
+  ],
+  "counsel_focus_on": [
+    "onward_transfers",
+    "subject_matter.sensitive_categories_art18",
+    "annex_a_tra",
+    "annex_c_subprocessors"
+  ],
+  "previous_hard_fail_rule": [
+    "VAL-SENSITIVE-ROUTE"
+  ],
+  "regulatory_posture": "Sensitive data with onward transfer is an enforcement-adjacent judgment path in v0.2. The draft verifier flags it for counsel review rather than treating the combination as a machine-decided regulatory violation."
+}
