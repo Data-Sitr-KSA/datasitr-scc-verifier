@@ -7,14 +7,13 @@
 # token permissions, license, dependabot, etc.).
 #
 # Results:
-#   - SARIF uploaded to the GitHub code-scanning tab (Security → Code
-#     scanning alerts). Free on public repos.
+#   - SARIF stored as a workflow artifact for reviewer inspection.
 #   - When `publish_results: true`, results are also published to the
 #     OpenSSF Scorecard public API, which feeds the live badge at
 #     api.securityscorecards.dev.
 #
 # This repository is public, so Scorecard publishes results to the public API
-# and uploads SARIF to GitHub code scanning.
+# on main pushes while PRs use Scorecard as a required status check.
 #
 # Reference: https://github.com/ossf/scorecard-action
 
@@ -46,12 +45,10 @@ jobs:
     if: github.event.repository.private == false
 
     # Scorecard needs these scopes:
-    #   security-events: write  — upload SARIF to code-scanning
-    #   id-token:        write  — OIDC token for publish_results
-    #   contents:        read   — read repo content
-    #   actions:         read   — inspect workflow files
+    #   id-token: write  — OIDC token for publish_results
+    #   contents: read   — read repo content
+    #   actions: read    — inspect workflow files
     permissions:
-      security-events: write
       id-token: write
       contents: read
       actions: read
@@ -78,12 +75,3 @@ jobs:
           name: scorecard-sarif
           path: results.sarif
           retention-days: 14
-
-      # Only upload to code-scanning when this is a push event on main.
-      # On branch_protection_rule and schedule, the SARIF still exists as
-      # an artifact but doesn't clutter the Security tab on every cron.
-      - name: Upload to code-scanning
-        if: github.event_name == 'push'
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: results.sarif
