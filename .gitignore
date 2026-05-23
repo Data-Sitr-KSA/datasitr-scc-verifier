@@ -11,9 +11,16 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.opa/
 .coverage
 htmlcov/
 .DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+.env
+.env.local
 
 # Signing keys MUST NOT be committed
 *.ed25519
@@ -24,3 +31,6 @@ keys/
 # Locally-generated attestations (per-run artefacts, not source)
 attestations/
 *.attestation.json
+
+# Internal/local utility scripts are not part of the public verifier package
+scripts/

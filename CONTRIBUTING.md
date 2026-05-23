@@ -2,7 +2,7 @@
 
 We welcome contributions, especially:
 
-1. **Adversarial test vectors** — SCC documents that should fail verification in specific ways. The more adversarial pressure on the rule bundle, the stronger the guarantee.
+1. **Adversarial test vectors** — canonical SCC JSON documents that should fail verification in specific ways. The more adversarial pressure on the rule bundle, the clearer its technical boundary.
 2. **Rule refinements** — corrections to existing Rego rules, with a corresponding test vector that fails before the fix and passes after.
 3. **Regulatory-evolution tracking** — when SDAIA publishes new guidance, propose the corresponding rule-bundle updates.
 4. **Translation / localisation** — Arabic-language rule descriptions and documentation.
@@ -22,7 +22,7 @@ Rule-bundle changes follow this process:
 2. Test vector coverage for the change (required — rules cannot land without an adversarial vector that fails before the fix and passes after).
 3. Saudi-counsel review (for rule changes affecting legal interpretation).
 4. 30-day public comment window (for rule additions, removals, or changes in interpretation).
-5. SDAIA notification (courtesy pre-ratification; required post-ratification).
+5. SDAIA notification where applicable; no v0.x process implies ratification.
 6. Signed release — the rule bundle hash changes; the new version carries a `sdaia-scc-vX.Y-YYYY-MM-DD` identifier.
 
 Minor corrections that do not change the semantics of any rule (docs, typos, tooling) do not require the 30-day window but still require a PR with tests.
@@ -43,4 +43,5 @@ This is a statement that you have the right to submit the contribution under the
 
 ## Contact
 
-Issues for technical problems. Email `sulayman@datasitr.com` for anything legal-adjacent.
+Use issues for public technical problems and rule proposals. Email
+`security@datasitr.com` for private security-sensitive reports.

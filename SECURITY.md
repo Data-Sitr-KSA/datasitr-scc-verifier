@@ -4,7 +4,7 @@
 
 During v0.x, only the `main` branch at its current HEAD is supported. Security fixes land on `main`; older commits are not patched separately.
 
-Once v1.0 is released and SDAIA ratification is achieved, a supported-version policy will be published here covering the then-current major and the prior major.
+If a future v1.0 release is formally ratified, a supported-version policy will be published here covering the then-current major and the prior major. No ratification is implied for v0.x drafts.
 
 ## Reporting a vulnerability
 
@@ -51,13 +51,17 @@ The following are in scope for vulnerability reports:
 
 ## Threat model and non-claims
 
-The project's threat model is documented in the design spec on the DataSitr side (`DataSitr_SCC_Verifier_Design_Spec_v0.2.md` §9). Explicitly-out-of-scope claims:
+The verifier trusts the SCC document author, the integrity of this rule bundle,
+the local OPA binary used for Rego evaluation, and the private signing key. It
+protects byte-level reproducibility of verdicts under a known rule bundle and
+cryptographically binds each verdict to a specific bundle hash. It does not
+protect against unlawful underlying transfers, signing-key compromise before
+rotation, mistaken or bad-faith human intent, or unratified rule interpretations.
 
 - We do not claim non-repudiation of human intent.
 - We do not claim attestations survive signing-key compromise until rotation.
 - We do not claim the verifier proves the underlying transfer is lawful.
-
-See the design spec for the full list.
+- We do not claim SDAIA ratification of the rule bundle.
 
 ## Cryptography
 

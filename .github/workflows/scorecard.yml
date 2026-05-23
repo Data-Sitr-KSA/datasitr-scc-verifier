@@ -14,12 +14,12 @@
 #     api.securityscorecards.dev.
 #
 # Visibility gate: Scorecard's public-publishing path only works for
-# PUBLIC repositories. While `datasitr-scc-verifier` is still private
-# (pre-Week-6 counsel-review gate), `publish_results` stays false and
+# PUBLIC repositories. While `datasitr-scc-verifier` is still private,
+# `publish_results` stays false and
 # SARIF upload is limited to CI artifacts; the workflow still runs and
 # produces a local scorecard so regressions are caught pre-flip.
 #
-# At the Week-6 public-flip, set `publish_results: true` and re-enable
+# At the public-flip, set `publish_results: true` and re-enable
 # SARIF upload to code-scanning in the same commit. The README badge
 # lights up automatically once OSSF indexes the first public run.
 #

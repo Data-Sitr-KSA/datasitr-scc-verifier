@@ -5,21 +5,21 @@
 [![OpenSSF Scorecard](https://img.shields.io/badge/OpenSSF_Scorecard-configured-lightgrey?logo=opensourcesecurity)](.github/workflows/scorecard.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
-[![SDAIA SCC v1-2024-09-02](https://img.shields.io/badge/SDAIA_SCC-v1--2024--09--02-informational)](schemas/scc-canonical-v1.json)
+[![Draft SCC canonical verifier](https://img.shields.io/badge/SCC_verifier-draft_canonical_form-informational)](schemas/scc-canonical-v1.json)
 
-**Machine-verifiable compliance for SDAIA Standard Contractual Clauses under the Saudi Personal Data Protection Law (PDPL).**
+**Draft reference implementation for machine-checkable elements of Saudi SCC transfer documentation.**
 
-A deterministic, transparent, cryptographically-attestable verifier that produces signed verdicts about the structural, value-bound, reference-integrity, freshness, and regulatory-anchor requirements of the SDAIA SCC template (issued 2 September 2024) and the Regulation on Personal Data Transfer Outside the Kingdom (1 September 2024).
+v0.2 validates the DataSitr canonical SCC JSON form, checks that the document requires the active rule bundle, evaluates a small initial Open Policy Agent/Rego rule bundle, flags judgment-bound fields for counsel review, and emits a signed draft attestation.
 
-The verifier honestly flags judgment-bound clauses (liability reasonableness, government-access warranties, etc.) as requiring human review. It does not replace Saudi-licensed counsel; it focuses counsel time on the clauses that actually require legal judgment.
+It does **not** verify the official signed SCC contract text, template selection, permitted blanks, all role-specific obligations, conflicts with additional terms, evidence references, freshness, or complete SDAIA SCC conformity. It is not ratified by SDAIA and is not legal advice.
 
-This is a reference implementation. It is offered to SDAIA for ratification and to the wider Saudi data-protection community as a public good.
+This is an experimental reference implementation released for technical review. The intended use is transparent, reproducible checking of a canonical representation, not replacement of Saudi-licensed counsel.
 
-> **Note on the OpenSSF Scorecard badge:** the workflow is configured and runs on every push to `main`; it uploads SARIF to the Security tab. The live Scorecard badge (fed by `api.securityscorecards.dev`) activates automatically once the repository is made public at the Week-6 counsel-review gate. Until then, the placeholder badge links to the workflow definition so reviewers can inspect the configured security posture directly.
+> **Note on the OpenSSF Scorecard badge:** the workflow is configured and runs on every push to `main`; it uploads SARIF to the Security tab. The live Scorecard badge (fed by `api.securityscorecards.dev`) activates automatically once the repository is public and Scorecard has indexed a run. Until then, the placeholder badge links to the workflow definition so reviewers can inspect the configured security posture directly.
 
 ## Status
 
-**Version:** 0.2.0-draft (pre-counsel-review)
+**Version:** 0.2.1-draft (pre-counsel-review)
 **Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
 **License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
@@ -27,10 +27,11 @@ This is a reference implementation. It is offered to SDAIA for ratification and 
 
 | Layer | What it is | v0.2 status |
 |---|---|---|
-| **1. Structural** | JSON Schema Draft 2020-12 validation of the SCC canonical form, with `format: date` / `format: date-time` enforced via `FormatChecker`. | **Live and tested.** 11 regression tests cover missing clauses, bad date formats, out-of-range values, enum violations. |
-| **2. Semantic** | Rego rules (Open Policy Agent) encoding value-bound and judgment constraints. 9 rules authored in `rules/` across 5 files. | **Live and evaluated** via the OPA binary subprocess. All 5 shipped test vectors now produce their semantic verdicts with zero divergences. The rule registry drives evaluation; adding a new rule = adding a registry entry plus a `.rego` file. |
-| **3. Evidence** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists via W3C Verifiable Credentials. | **Deferred to v0.3.** |
-| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`, now carries the full Layer-1+Layer-2 check set. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
+| **1. Structural** | JSON Schema Draft 2020-12 validation of the SCC canonical JSON form, with `format: date` / `format: date-time` enforced via `FormatChecker`. | **Live and tested.** Regression tests cover missing clauses, bad date formats, out-of-range values, and enum violations. |
+| **1b. Bundle identity** | `rule_bundle_required` must match the active verifier bundle ID. | **Live and tested.** A mismatch produces `RULE-BUNDLE-MATCH: FAIL`; semantic rules are not treated as verified under the wrong bundle. |
+| **2. Semantic/judgment** | Rego rules (Open Policy Agent) encoding a small initial set of value-bound and judgment constraints. 9 rules are authored in `rules/` across 5 files. | **Live when OPA is available.** If OPA is missing, Layer 2 checks are marked `INCOMPLETE` and the overall verdict cannot be `PASS`. |
+| **3. Evidence/reference/freshness** | Cross-reference integrity against TRA registers, TOMs snapshots, sub-processor lists, freshness windows, and W3C Verifiable Credentials. | **Deferred to v0.3+.** Not implemented in v0.2. |
+| **4. Attestation** | Ed25519-signed envelope, SHA-256 rule-bundle hash, W3C VC v2 shape, self-validating against `schemas/attestation-envelope-v1.json`. | **Live.** Real signing with either an explicit `--signing-key` or an ephemeral keypair (emits a `UserWarning`). |
 
 v0.2 is a floor, not a ceiling. The public envelope format, schemas, and rule-bundle-hash semantics are stable; new rules ratchet upward through v0.3 and v1.0 without breaking attestations produced under prior bundles.
 
@@ -42,12 +43,18 @@ Layer 2 evaluation requires the [Open Policy Agent](https://www.openpolicyagent.
 - **Linux:** `curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static && chmod +x opa && sudo mv opa /usr/local/bin/`
 - **Docker:** `docker run openpolicyagent/opa:latest`
 
-If the binary is not discoverable, the verifier degrades gracefully: attestations are still emitted with Layer 1 results, and Layer 2 rule results appear as `NOT_APPLICABLE` with a skip reason. A `UserWarning` surfaces the install instructions. Set `SCC_OPA_BIN=/path/to/opa` to use a non-PATH location.
+If the binary is not discoverable, attestations are still emitted but Layer 2 checks are marked `INCOMPLETE`, the overall verdict is `INCOMPLETE`, and `scc-verify verify` exits non-zero. To intentionally allow this in a Layer-1-only environment, pass `--allow-incomplete-without-opa`; the emitted verdict remains `INCOMPLETE`.
+
+Set `SCC_OPA_BIN=/path/to/opa` to use a non-PATH location.
 
 ## What this verifier does NOT do
 
 - It does not produce legal validity. Only signatures from both parties under KSA law do that.
 - It does not replace counsel. It focuses counsel work on judgment clauses.
+- It does not verify the official SDAIA SCC document text or prove that only permitted blanks were modified.
+- It does not select among role-specific SCC templates or verify every role-specific obligation.
+- It does not detect conflicts between additional commercial terms and mandatory SCC text.
+- It does not resolve evidence, reference integrity, or freshness yet.
 - It does not decide commercial reasonableness. It flags those clauses.
 - It does not verify counterparty good faith. Cryptographic evidence is not moral evidence.
 - It is not an AI system. There is no model, no inference, no probabilistic output. It is deterministic policy-as-code.
@@ -60,7 +67,7 @@ Every primitive is a well-reviewed standard. No novel cryptography.
 - **SHA-256 hashing** (FIPS 180-4)
 - **JSON Canonicalization Scheme** (RFC 8785) for deterministic hashing
 - **JSON Schema Draft 2020-12** for structural validation, with `FormatChecker` enforcing `date` / `date-time`
-- **Open Policy Agent / Rego** for semantic rules (rules authored; evaluator lands in v0.2)
+- **Open Policy Agent / Rego** for semantic and judgment rules
 - **W3C Verifiable Credentials v2.0** for evidence and attestation envelopes
 - **NIST OSCAL** referenced for TOMs structure
 - **Saudi Electronic Transactions Law (Royal Decree M/18)** recognises the electronic-signature posture
@@ -112,7 +119,7 @@ pytest -v
 
 # CI runs the above across Python 3.11, 3.12, 3.13 on Ubuntu + macOS.
 # A second CI job explicitly runs without OPA installed to lock the
-# graceful-degradation contract.
+# incomplete-evaluation contract.
 ```
 
 ## Security
@@ -161,14 +168,14 @@ datasitr-scc-verifier/
 │   │   ├── ksa_domestic_scc.json
 │   │   └── ksa_domestic_scc.expected.json
 │   ├── known_bad/
-│   │   ├── structurally_malformed.json          # Layer 1 FAIL (v0.1)
+│   │   ├── structurally_malformed.json          # Layer 1 FAIL
 │   │   ├── structurally_malformed.expected.json
-│   │   ├── missing_governing_law.json           # Layer 2 pending
+│   │   ├── missing_governing_law.json           # Layer 2 semantic FAIL
 │   │   ├── missing_governing_law.expected.json
-│   │   ├── sensitive_onward_transfer.json       # Layer 2 pending
+│   │   ├── sensitive_onward_transfer.json       # Layer 2 semantic FAIL
 │   │   └── sensitive_onward_transfer.expected.json
 │   └── judgment_required/
-│       ├── needs_counsel_review.json            # Layer 2 pending
+│       ├── needs_counsel_review.json            # Layer 2 counsel-review verdict
 │       └── needs_counsel_review.expected.json
 ├── scc_verifier/                   # Python library (Apache-2.0)
 │   ├── api.py              # verify(), validate_schema(), self_validate()
@@ -184,9 +191,24 @@ datasitr-scc-verifier/
 
 Data Sitr Est. (SDAIA Registration #3260005651) maintains this project as an open-source public good. The reference implementation is integrated into the DataSitr privacy-preserving AI gateway product, but the verifier, schemas, rule bundle, and test vectors are all released under permissive licenses so they can be used, audited, forked, or ratified independently of any commercial DataSitr relationship.
 
+## Counsel-review checklist
+
+Before any public claim stronger than "draft canonical-form verifier", each legal rule needs a short counsel note with source citation, interpretation boundary, and expected dispute handling:
+
+- `VAL-GOV-LAW` and `VAL-DISPUTE-FORUM`: confirm accepted KSA jurisdiction/forum language and any permitted alternatives.
+- `VAL-BREACH-EXPORTER` and `VAL-BREACH-SDAIA`: confirm notification windows and triggering conditions.
+- `VAL-SENSITIVE-ROUTE`: confirm whether the current sensitive-data/onward-transfer rule is legally correct or should be downgraded to counsel review.
+- `JUDGE-LIAB-001`, `JUDGE-GOV-ACCESS-001`, `JUDGE-INDEM-001`: confirm these remain review flags, not automated legal decisions.
+
+## Roadmap
+
+- **v0.3:** evidence credentials, reference integrity for TRA/TOMs/sub-processor references, and freshness checks.
+- **v0.4:** official-template conformance path: parser/extractor, mandatory-clause hashes, role-template mapping, and permitted-blank verification.
+- **v1.0:** counsel-reviewed rule bundle, frozen rule IDs, signed release artifacts, and documented ratification posture.
+
 ## Ratification pathway
 
-We are seeking SDAIA ratification of the rule bundle as an authoritative reference for Data Transfer Regulations compliance. Until ratified, every attestation carries `ratification_status: not-yet-ratified-by-sdaia` in its envelope. After ratification, the rule bundle will be co-signed by SDAIA.
+No SDAIA ratification is implied. Until any formal ratification occurs, every attestation carries `ratification_status: not-yet-ratified-by-sdaia` in its envelope. A ratified release would require formal review and co-signed rule-bundle artifacts.
 
 ## Contributing
 

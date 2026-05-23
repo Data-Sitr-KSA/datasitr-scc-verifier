@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file. Every
 rule-bundle version carries a dated identifier (`sdaia-scc-vX.Y-YYYY-MM-DD`)
 so historical attestations remain reproducible.
 
+## [0.2.1-draft] - 2026-05-23
+
+Public-credibility hardening pass before broad release.
+
+### Changed
+
+- Missing OPA no longer produces a clean-looking `PASS`. Layer 2 checks are
+  marked `INCOMPLETE`, the overall verdict becomes `INCOMPLETE`, and the CLI
+  exits non-zero by default.
+- Added `--allow-incomplete-without-opa` for workflows that intentionally want
+  to emit a Layer-1-only attestation while preserving the `INCOMPLETE` verdict.
+- Added `RULE-BUNDLE-MATCH`; `rule_bundle_required` must match the active
+  bundle ID or the attestation fails.
+- Aligned all shipped test vectors to the active bundle ID.
+- Reworded the README and package description around the actual v0.2 scope:
+  canonical JSON validation, initial Rego rules, counsel-review flags, and
+  signed draft attestations. Official SCC text verification, evidence,
+  freshness, and reference-integrity checks remain out of scope for v0.2.
+
+### Test suite
+
+- 69 passing. Added regressions for missing OPA, explicit incomplete allowance,
+  bundle-ID mismatch, and vector/bundle drift.
+- New regressions live in `tests/test_incomplete_and_bundle_match.py`.
+
+### Not ratified by SDAIA. Not reviewed by Saudi-licensed counsel.
+
+No SDAIA ratification is implied. Attestations continue to carry
+`ratification_status: not-yet-ratified-by-sdaia`.
+
+---
+
 ## [0.2.0-draft] - 2026-04-18
 
 Layer 2 goes live. OPA/Rego evaluator integrated end-to-end.
@@ -20,8 +52,9 @@ Layer 2 goes live. OPA/Rego evaluator integrated end-to-end.
   binary is unavailable so CI environments without OPA still pass the rest of
   the suite.
 - `verify()` now calls the Rego evaluator after schema validation and emits a
-  multi-check attestation. When OPA is absent, degrades gracefully to Layer-1
-  with `NOT_APPLICABLE` placeholders and a `UserWarning`.
+  multi-check attestation. The initial 0.2.0 draft emitted Layer-1-only
+  attestations with `NOT_APPLICABLE` placeholders when OPA was absent; 0.2.1
+  hardens that behavior to `INCOMPLETE`.
 - `README.md` updated with an OPA install section.
 
 ### Changed
@@ -71,7 +104,7 @@ Initial scaffold. Pre-counsel-review.
 
 ### Added
 
-- Repository structure per DataSitr_SCC_Verifier_Design_Spec.md
+- Repository structure for the initial draft SCC verifier
 - JSON Schemas (v1): SCC canonical form, attestation envelope, evidence credential
 - First 9 Rego rules: STRUCT-001, VAL-GOV-LAW, VAL-DISPUTE-FORUM, VAL-BREACH-EXPORTER,
   VAL-BREACH-SDAIA, VAL-SENSITIVE-ROUTE, JUDGE-LIAB-001, JUDGE-GOV-ACCESS-001,
