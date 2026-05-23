@@ -1,6 +1,12 @@
 {
   "scc_id": "SCC-2026-04-002",
   "rule_bundle_required": "sdaia-scc-v0.1-2024-09-02",
+  "scc_template": {
+    "template_id": "controller_to_processor",
+    "exporter_role": "CONTROLLER",
+    "importer_role": "PROCESSOR",
+    "official_template_ref": "SDAIA SCC Second Template (Controller to Processor)"
+  },
   "parties": {
     "exporter": {
       "legal_name": "Example KSA Enterprise Ltd.",

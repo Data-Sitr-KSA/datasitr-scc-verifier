@@ -1,6 +1,12 @@
 {
   "scc_id": "SCC-2026-04-001",
   "rule_bundle_required": "sdaia-scc-v0.1-2024-09-02",
+  "scc_template": {
+    "template_id": "controller_to_processor",
+    "exporter_role": "CONTROLLER",
+    "importer_role": "PROCESSOR",
+    "official_template_ref": "SDAIA SCC Second Template (Controller to Processor)"
+  },
   "parties": {
     "exporter": {
       "legal_name": "Example KSA Enterprise Ltd.",
@@ -10,10 +16,10 @@
       "role": "CONTROLLER"
     },
     "importer": {
-      "legal_name": "Data Sitr Est.",
-      "cr_number": "7040000000",
-      "registered_address": "Riyadh, Kingdom of Saudi Arabia",
-      "country": "SA",
+      "legal_name": "Example Foreign Processor FZ-LLC",
+      "cr_number": "AE-000000",
+      "registered_address": "Dubai, United Arab Emirates",
+      "country": "AE",
       "role": "PROCESSOR"
     }
   },
@@ -21,7 +27,7 @@
     "data_categories": ["name", "national_id", "contact_details"],
     "data_subjects": ["customers"],
     "sensitive_categories_art18": ["none"],
-    "purpose": "privacy-preserving AI routing through the DataSitr gateway",
+    "purpose": "cross-border processor hosting for customer support workflow data",
     "transfer_basis": "standard_contractual_clauses",
     "duration": {
       "start": "2026-05-01",
@@ -78,11 +84,11 @@
   "annex_b_toms_ref": "toms-snapshot-2026-04-17T14:00:00Z",
   "annex_c_subprocessors": [
     {
-      "name": "STC SambaNova",
-      "service": "in-Kingdom AI inference",
-      "country": "SA",
-      "data_categories": ["tokenized-only"],
-      "safeguard": "in-kingdom-only-route"
+      "name": "Example EU Backup Processor GmbH",
+      "service": "encrypted disaster-recovery storage",
+      "country": "DE",
+      "data_categories": ["encrypted-backup-only"],
+      "safeguard": "no-cleartext-processing; SCC accession required before activation"
     }
   ],
   "signatures": {
@@ -93,8 +99,8 @@
       "signature_ref": "sig-exp-2026-04-30"
     },
     "importer": {
-      "name": "Data Sitr Founder",
-      "title": "Founder / DPO / AI Agent",
+      "name": "John Smith",
+      "title": "Authorized Signatory",
       "signed_at": "2026-04-30T12:05:00Z",
       "signature_ref": "sig-imp-2026-04-30"
     }

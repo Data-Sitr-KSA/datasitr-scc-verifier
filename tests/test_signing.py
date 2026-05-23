@@ -9,8 +9,10 @@ import pytest
 from scc_verifier.signing import (
     generate_keypair,
     load_private_key,
+    load_public_key,
     public_key_sha256,
     save_private_key,
+    save_public_key,
     sign_bytes,
     verify_signature,
 )
@@ -63,6 +65,15 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     assert verify_signature(loaded.public_key(), payload, signed)
     signed2 = sign_bytes(loaded, payload)
     assert verify_signature(key.public_key(), payload, signed2)
+
+
+def test_save_and_load_public_key_roundtrip(tmp_path: Path) -> None:
+    key = generate_keypair()
+    path = tmp_path / "verifier.pub.pem"
+    save_public_key(key.public_key(), path)
+    loaded = load_public_key(path)
+    payload = b"public key reload"
+    assert verify_signature(loaded, payload, sign_bytes(key, payload))
 
 
 def test_load_rejects_non_ed25519_key(tmp_path: Path) -> None:

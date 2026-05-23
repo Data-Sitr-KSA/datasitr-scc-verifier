@@ -1,10 +1,10 @@
 # VAL-GOV-LAW — Governing law is the Kingdom of Saudi Arabia
-# VAL-DISPUTE-FORUM — Dispute-resolution forum is a KSA venue
+# VAL-DISPUTE-FORUM — Dispute-resolution forum is KSA courts
 #
-# The SDAIA SCC template requires Saudi law as governing law and a KSA venue
-# for dispute resolution. A SCC citing foreign governing law (e.g., English
-# law, EU law) does not satisfy the Data Transfer Regulations' Article 29
-# requirements, regardless of other safeguards.
+# The SDAIA SCC template requires Saudi law as governing law and says disputes
+# fall under the Kingdom's jurisdiction and courts. Arbitration alternatives
+# are not hard-passed in this draft bundle unless a future counsel-reviewed
+# rule note establishes the exact legal basis.
 #
 # Regulatory basis: SDAIA SCC template §11, Data Transfer Regulations 2024-09-01.
 #
@@ -25,10 +25,7 @@ accepted_jurisdictions := {
 
 accepted_dispute_forums := {
 	"Saudi courts",
-	"SDAIA-recognised arbitration body",
-	"SDAIA-recognized arbitration body",
 	"Riyadh courts",
-	"Saudi Center for Commercial Arbitration",
 }
 
 governing_law_is_ksa if {

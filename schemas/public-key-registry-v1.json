@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datasitr.com/schemas/public-key-registry-v1.json",
+  "title": "SCC Verifier Public Key Registry v1",
+  "description": "Public key registry shape for verifier deployments that publish Ed25519 verification keys at /.well-known/scc-verifier-keys.json. This schema does not publish or imply any DataSitr production key.",
+  "type": "object",
+  "required": ["issuer", "generated_at", "keys"],
+  "properties": {
+    "issuer": {
+      "type": "string",
+      "format": "uri",
+      "description": "Issuer DID or URI used in attestation envelopes."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "public_key_pem", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^key-sha256:[0-9a-f]{64}$"
+          },
+          "type": {
+            "const": "Ed25519VerificationKey2020"
+          },
+          "public_key_pem": {
+            "type": "string",
+            "pattern": "^-----BEGIN PUBLIC KEY-----"
+          },
+          "status": {
+            "enum": ["active", "retired", "revoked"]
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -39,6 +39,7 @@ from cryptography.hazmat.primitives.serialization import (
     PrivateFormat,
     PublicFormat,
     load_pem_private_key,
+    load_pem_public_key,
 )
 
 
@@ -78,6 +79,25 @@ def load_private_key(path: Path) -> Ed25519PrivateKey:
     loaded = load_pem_private_key(pem, password=None)
     if not isinstance(loaded, Ed25519PrivateKey):
         raise ValueError(f"not an Ed25519 private key: {path}")
+    return loaded
+
+
+def save_public_key(key: Ed25519PublicKey, path: Path) -> None:
+    """Persist a public key to disk as PEM."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pem = key.public_bytes(
+        encoding=Encoding.PEM,
+        format=PublicFormat.SubjectPublicKeyInfo,
+    )
+    path.write_bytes(pem)
+
+
+def load_public_key(path: Path) -> Ed25519PublicKey:
+    """Load a PEM Ed25519 public key."""
+    pem = path.read_bytes()
+    loaded = load_pem_public_key(pem)
+    if not isinstance(loaded, Ed25519PublicKey):
+        raise ValueError(f"not an Ed25519 public key: {path}")
     return loaded
 
 

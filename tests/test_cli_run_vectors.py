@@ -49,7 +49,7 @@ def test_verify_exits_zero_on_known_good(tmp_path) -> None:
         [
             "verify",
             "--scc",
-            "test_vectors/known_good/ksa_domestic_scc.json",
+            "test_vectors/known_good/ksa_to_foreign_processor_scc.json",
             "--out",
             str(out),
         ]
@@ -91,6 +91,24 @@ def test_keygen_creates_nested_output_dir(tmp_path) -> None:
     exit_code = cli_main(["keygen", "--out", str(out)])
     assert exit_code == 0
     assert out.exists()
+
+
+def test_keygen_can_write_public_key(tmp_path) -> None:
+    private_out = tmp_path / "key.ed25519"
+    public_out = tmp_path / "key.pub.pem"
+    exit_code = cli_main(
+        [
+            "keygen",
+            "--out",
+            str(private_out),
+            "--public-out",
+            str(public_out),
+        ]
+    )
+    assert exit_code == 0
+    assert private_out.exists()
+    assert public_out.exists()
+    assert public_out.read_text().startswith("-----BEGIN PUBLIC KEY-----")
 
 
 def test_keygen_refuses_to_overwrite_without_force(tmp_path) -> None:

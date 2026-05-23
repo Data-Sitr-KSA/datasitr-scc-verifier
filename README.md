@@ -17,7 +17,7 @@ This is an experimental reference implementation released for technical review. 
 
 ## Status
 
-- **Version:** 0.2.1-draft (pre-counsel-review)
+- **Version:** 0.2.2-draft (pre-counsel-review)
 - **Ratification:** Not yet ratified by SDAIA. Attestations carry `ratification_status: not-yet-ratified-by-sdaia`.
 - **License:** Apache-2.0 for code; CC0-1.0 for schemas and test vectors.
 
@@ -85,20 +85,27 @@ scc-verify bundle info
 scc-verify bundle info --format json --verbose
 
 # Generate a signing key (one-time, per deployment)
-scc-verify keygen --out ./keys/verifier.ed25519
+scc-verify keygen \
+  --out ./keys/verifier.ed25519 \
+  --public-out ./keys/verifier.pub.pem
 
 # Verify an SCC document with that key
 scc-verify verify \
-  --scc test_vectors/known_good/ksa_domestic_scc.json \
+  --scc test_vectors/known_good/ksa_to_foreign_processor_scc.json \
   --signing-key ./keys/verifier.ed25519 \
   --out attestation.json
 
 # Or verify with an ephemeral key (produces a UserWarning; signatures
 # cannot be verified after the process exits)
-scc-verify verify --scc test_vectors/known_good/ksa_domestic_scc.json
+scc-verify verify --scc test_vectors/known_good/ksa_to_foreign_processor_scc.json
 
 # Run the packaged test-vector corpus
 scc-verify run-vectors
+
+# Verify a signed attestation with the deployment public key
+scc-verify verify-attestation \
+  --attestation attestation.json \
+  --public-key ./keys/verifier.pub.pem
 ```
 
 The emitted attestation is **self-validated against `schemas/attestation-envelope-v1.json`** before it is written. If the envelope fails its own schema, `scc-verify verify` exits non-zero and does not emit the document.
@@ -156,38 +163,47 @@ datasitr-scc-verifier/
 ├── schemas/                        # JSON Schemas (CC0)
 │   ├── scc-canonical-v1.json
 │   ├── attestation-envelope-v1.json
-│   └── evidence-credential-v1.json
+│   ├── evidence-credential-v1.json
+│   └── public-key-registry-v1.json
 ├── rules/                          # Rego rule bundle (Apache-2.0)
 │   ├── structural/
 │   ├── value/
 │   └── judgment/
 ├── test_vectors/                   # Test corpus (CC0)
 │   ├── known_good/
-│   │   ├── ksa_domestic_scc.json
-│   │   └── ksa_domestic_scc.expected.json
+│   │   ├── ksa_to_foreign_processor_scc.json
+│   │   └── ksa_to_foreign_processor_scc.expected.json
 │   ├── known_bad/
 │   │   ├── structurally_malformed.json          # Layer 1 FAIL
 │   │   ├── structurally_malformed.expected.json
 │   │   ├── missing_governing_law.json           # Layer 2 semantic FAIL
 │   │   ├── missing_governing_law.expected.json
-│   │   ├── sensitive_onward_transfer.json       # Layer 2 semantic FAIL
-│   │   └── sensitive_onward_transfer.expected.json
+│   │   ├── arbitration_forum_without_counsel_basis.json
+│   │   └── arbitration_forum_without_counsel_basis.expected.json
 │   └── judgment_required/
 │       ├── needs_counsel_review.json            # Layer 2 counsel-review verdict
-│       └── needs_counsel_review.expected.json
+│       ├── needs_counsel_review.expected.json
+│       ├── sensitive_onward_transfer_needs_counsel.json
+│       └── sensitive_onward_transfer_needs_counsel.expected.json
 ├── scc_verifier/                   # Python library (Apache-2.0)
 │   ├── api.py              # verify(), validate_schema(), self_validate()
+│   ├── attestation_verifier.py # third-party attestation signature checks
 │   ├── bundle.py           # rule-bundle hashing
 │   ├── canonicalization.py # RFC 8785
 │   ├── cli.py              # scc-verify
 │   ├── schema_validator.py # Layer 1 with FormatChecker
 │   └── signing.py          # Ed25519 keypair ops
+├── docs/
+│   ├── public-key-registry.md
+│   └── scc-template-conformance.md
+├── examples/
+│   └── scc-verifier-keys.example.json
 └── tests/
 ```
 
 ## Relationship to Data Sitr Est.
 
-Data Sitr Est. (SDAIA Registration #3260005651) maintains this project as an open-source public good. The reference implementation is integrated into the DataSitr privacy-preserving AI gateway product, but the verifier, schemas, rule bundle, and test vectors are all released under permissive licenses so they can be used, audited, forked, or ratified independently of any commercial DataSitr relationship.
+Data Sitr Est. maintains this project as an open-source public good. The reference implementation is integrated into the DataSitr privacy-preserving AI gateway product, but the verifier, schemas, rule bundle, and test vectors are all released under permissive licenses so they can be used, audited, forked, or ratified independently of any commercial DataSitr relationship. Any organization relying on DataSitr's regulatory registrations or commercial claims should verify them through the relevant Saudi authority or a direct DataSitr due-diligence channel.
 
 ## Counsel-review checklist
 
@@ -195,7 +211,7 @@ Before any public claim stronger than "draft canonical-form verifier", each lega
 
 - `VAL-GOV-LAW` and `VAL-DISPUTE-FORUM`: confirm accepted KSA jurisdiction/forum language and any permitted alternatives.
 - `VAL-BREACH-EXPORTER` and `VAL-BREACH-SDAIA`: confirm notification windows and triggering conditions.
-- `VAL-SENSITIVE-ROUTE`: confirm whether the current sensitive-data/onward-transfer rule is legally correct or should be downgraded to counsel review.
+- `VAL-SENSITIVE-ROUTE`: confirm sensitive-data onward-transfer conditions: third-party accession, role-template fit, additional safeguards, and transfer-risk assessment evidence.
 - `JUDGE-LIAB-001`, `JUDGE-GOV-ACCESS-001`, `JUDGE-INDEM-001`: confirm these remain review flags, not automated legal decisions.
 
 ## Roadmap
@@ -203,6 +219,10 @@ Before any public claim stronger than "draft canonical-form verifier", each lega
 - **v0.3:** evidence credentials, reference integrity for TRA/TOMs/sub-processor references, and freshness checks.
 - **v0.4:** official-template conformance path: parser/extractor, mandatory-clause hashes, role-template mapping, and permitted-blank verification.
 - **v1.0:** counsel-reviewed rule bundle, frozen rule IDs, signed release artifacts, and documented ratification posture.
+
+See [docs/scc-template-conformance.md](docs/scc-template-conformance.md) for the
+template-conformance path and [docs/public-key-registry.md](docs/public-key-registry.md)
+for the deferred public-key registry.
 
 ## Ratification pathway
 

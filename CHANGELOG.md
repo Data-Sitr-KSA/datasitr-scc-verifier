@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file. Every
 rule-bundle version carries a dated identifier (`sdaia-scc-vX.Y-YYYY-MM-DD`)
 so historical attestations remain reproducible.
 
+## [0.2.2-draft] - 2026-05-23
+
+### Changed
+
+- Replaced the flagship `known_good` domestic demo with
+  `known_good/ksa_to_foreign_processor_scc`, a cross-border
+  controller-to-processor SCC canonical form aligned with the stated SCC scope.
+- `VAL-SENSITIVE-ROUTE` now emits `REQUIRES_HUMAN_REVIEW` for sensitive data
+  with permitted onward transfers. v0.2 no longer machine-decides that path as
+  a hard regulatory violation without counsel-reviewed checks for accession,
+  template fit, additional safeguards, and transfer-risk assessment evidence.
+- `VAL-DISPUTE-FORUM` no longer accepts arbitration forums as automatic PASS
+  values. Saudi courts remain the draft hard-pass forum until counsel approves
+  any alternative.
+- Attestation determinism wording now distinguishes reproducible credential
+  subject/verdict/bundle data from timestamped signed envelopes.
+- Public registration wording in the README no longer relies on an unverifiable
+  standalone registration number.
+
+### Added
+
+- `scc-verify verify-attestation` for third-party Ed25519 signature checks.
+- `scc-verify keygen --public-out` for exporting the matching public key.
+- `schemas/public-key-registry-v1.json`, `examples/scc-verifier-keys.example.json`,
+  and `docs/public-key-registry.md` for future `.well-known` key publication.
+- `scc_template` structural field with role-pair consistency validation across
+  the four SDAIA SCC template families.
+- Regression vectors for arbitration-forum rejection and sensitive-onward-
+  transfer counsel review.
+
+### Test suite
+
+- 78 passing.
+- Test-vector corpus now has 6 vectors, 0 divergences, 0 skipped.
+
+---
+
 ## [0.2.1-draft] - 2026-05-23
 
 Public-credibility hardening pass before broad release.
@@ -64,11 +101,11 @@ Layer 2 goes live. OPA/Rego evaluator integrated end-to-end.
   set rules, `some ... in ...` iteration).
 - Test vector `*.expected.json` files now carry `v0_2_expected` matching the
   shipped semantic verdicts:
-  - `known_good/ksa_domestic_scc`: `PASS_WITH_COUNSEL_ITEMS` (6 PASS + 3 REVIEW)
+  - `known_good/ksa_to_foreign_processor_scc`: `PASS_WITH_COUNSEL_ITEMS`
   - `known_bad/missing_governing_law`: `FAIL` (VAL-GOV-LAW and VAL-DISPUTE-FORUM
     fire; `pending_layer_2: true` removed)
-  - `known_bad/sensitive_onward_transfer`: `FAIL` (VAL-SENSITIVE-ROUTE fires;
-    `pending_layer_2: true` removed)
+  - `judgment_required/sensitive_onward_transfer_needs_counsel`:
+    `PASS_WITH_COUNSEL_ITEMS` (VAL-SENSITIVE-ROUTE now flags counsel review)
   - `known_bad/structurally_malformed`: `FAIL` (Layer 1 catches it; Layer 2
     skipped as `NOT_APPLICABLE`)
   - `judgment_required/needs_counsel_review`: `PASS_WITH_COUNSEL_ITEMS`
@@ -80,7 +117,7 @@ Layer 2 goes live. OPA/Rego evaluator integrated end-to-end.
 
 - 58 passing (was 50). Layer 2 determinism, rule-registry integrity, and
   per-rule outcome regressions all covered.
-- All 5 test vectors run cleanly, 0 divergences, 0 skipped.
+- All shipped test vectors run cleanly, 0 divergences, 0 skipped.
 
 ### Known limitations carried forward
 

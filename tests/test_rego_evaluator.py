@@ -79,8 +79,8 @@ def test_find_opa_raises_with_useful_message_when_missing(monkeypatch) -> None:
 
 @opa_required
 def test_known_good_produces_pass_with_counsel_items() -> None:
-    """The Saudi-domestic vector: 6 rules PASS, 3 judgment rules REVIEW."""
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    """The cross-border vector: 6 rules PASS, 3 judgment rules REVIEW."""
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     results = evaluate_rules(scc)
     by_id = {r.id: r for r in results}
     assert by_id["STRUCT-001"].status == "PASS"
@@ -106,18 +106,29 @@ def test_foreign_governing_law_fires_fail() -> None:
 
 
 @opa_required
-def test_sensitive_plus_onward_transfer_fires_fail() -> None:
-    """Article 18 sensitive data + onward_transfers.permitted=true → FAIL."""
-    scc = _load(VECTORS / "known_bad" / "sensitive_onward_transfer.json")
+def test_sensitive_plus_onward_transfer_requires_counsel_review() -> None:
+    """Article 18 sensitive data + onward transfer is counsel-review in v0.2."""
+    scc = _load(VECTORS / "judgment_required" / "sensitive_onward_transfer_needs_counsel.json")
     results = evaluate_rules(scc)
     by_id = {r.id: r for r in results}
-    assert by_id["VAL-SENSITIVE-ROUTE"].status == "FAIL"
+    assert by_id["VAL-SENSITIVE-ROUTE"].status == "REQUIRES_HUMAN_REVIEW"
+    assert by_id["VAL-SENSITIVE-ROUTE"].counsel_field == "onward_transfers"
+
+
+@opa_required
+def test_arbitration_forum_without_counsel_basis_fails() -> None:
+    """Arbitration is not an automatic hard-pass forum in the draft bundle."""
+    scc = _load(VECTORS / "known_bad" / "arbitration_forum_without_counsel_basis.json")
+    results = evaluate_rules(scc)
+    by_id = {r.id: r for r in results}
+    assert by_id["VAL-GOV-LAW"].status == "PASS"
+    assert by_id["VAL-DISPUTE-FORUM"].status == "FAIL"
 
 
 @opa_required
 def test_judgment_rules_flag_counsel_fields() -> None:
     """JUDGE-* results must populate counsel_field and rationale_required."""
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     results = evaluate_rules(scc)
     by_id = {r.id: r for r in results}
     liab = by_id["JUDGE-LIAB-001"]
@@ -131,7 +142,7 @@ def test_evaluate_rules_is_deterministic() -> None:
 
     This is the property that makes reproducibility claims honest.
     """
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     a = evaluate_rules(scc)
     b = evaluate_rules(scc)
     assert a == b
@@ -140,7 +151,7 @@ def test_evaluate_rules_is_deterministic() -> None:
 @opa_required
 def test_breach_windows_catch_out_of_range() -> None:
     """Mutate the exporter window to 48 hours (over the 24h bound) → FAIL."""
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     scc["breach_notification"]["exporter_notification_window_hours"] = 48
     results = evaluate_rules(scc)
     by_id = {r.id: r for r in results}

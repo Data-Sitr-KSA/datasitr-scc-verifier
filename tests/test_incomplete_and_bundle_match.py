@@ -28,7 +28,7 @@ def test_missing_opa_yields_incomplete_not_pass(monkeypatch) -> None:
     monkeypatch.delenv("SCC_OPA_BIN", raising=False)
     monkeypatch.setenv("PATH", "/nonexistent")
 
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     attestation = _verify_quiet(scc)
 
     assert attestation.subject.verdict == "INCOMPLETE"
@@ -50,7 +50,7 @@ def test_cli_missing_opa_exits_nonzero_by_default(monkeypatch, tmp_path: Path) -
         [
             "verify",
             "--scc",
-            str(VECTORS / "known_good" / "ksa_domestic_scc.json"),
+            str(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json"),
             "--out",
             str(out),
         ]
@@ -71,7 +71,7 @@ def test_cli_can_explicitly_allow_incomplete_without_opa(monkeypatch, tmp_path: 
         [
             "verify",
             "--scc",
-            str(VECTORS / "known_good" / "ksa_domestic_scc.json"),
+            str(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json"),
             "--out",
             str(out),
             "--allow-incomplete-without-opa",
@@ -99,7 +99,7 @@ def test_allow_flag_does_not_mask_layer_2_crash(monkeypatch, tmp_path: Path) -> 
         [
             "verify",
             "--scc",
-            str(VECTORS / "known_good" / "ksa_domestic_scc.json"),
+            str(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json"),
             "--out",
             str(out),
             "--allow-incomplete-without-opa",
@@ -118,7 +118,7 @@ def test_allow_flag_does_not_mask_layer_2_crash(monkeypatch, tmp_path: Path) -> 
 
 
 def test_rule_bundle_required_must_match_active_bundle() -> None:
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     scc["rule_bundle_required"] = "sdaia-scc-v0.1-2099-01-01"
 
     attestation = _verify_quiet(scc)
@@ -133,7 +133,7 @@ def test_rule_bundle_required_must_match_active_bundle() -> None:
 
 
 def test_non_string_rule_bundle_required_is_not_applicable_and_schema_fails() -> None:
-    scc = _load(VECTORS / "known_good" / "ksa_domestic_scc.json")
+    scc = _load(VECTORS / "known_good" / "ksa_to_foreign_processor_scc.json")
     scc["rule_bundle_required"] = 123
 
     attestation = _verify_quiet(scc)

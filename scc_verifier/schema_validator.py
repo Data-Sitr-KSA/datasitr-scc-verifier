@@ -23,6 +23,7 @@ SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
 SCC_SCHEMA_PATH = SCHEMAS_DIR / "scc-canonical-v1.json"
 ATTESTATION_SCHEMA_PATH = SCHEMAS_DIR / "attestation-envelope-v1.json"
 EVIDENCE_SCHEMA_PATH = SCHEMAS_DIR / "evidence-credential-v1.json"
+PUBLIC_KEY_REGISTRY_SCHEMA_PATH = SCHEMAS_DIR / "public-key-registry-v1.json"
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,11 @@ def load_scc_schema() -> dict[str, Any]:
 def load_attestation_schema() -> dict[str, Any]:
     """Load the attestation envelope schema."""
     return _load(ATTESTATION_SCHEMA_PATH)
+
+
+def load_public_key_registry_schema() -> dict[str, Any]:
+    """Load the public key registry schema."""
+    return _load(PUBLIC_KEY_REGISTRY_SCHEMA_PATH)
 
 
 def _validate_against(document: dict[str, Any], schema: dict[str, Any]) -> SchemaValidationResult:
@@ -78,3 +84,8 @@ def validate_attestation_envelope(envelope: dict[str, Any]) -> SchemaValidationR
     verifier emits an attestation that fails its own published schema.
     """
     return _validate_against(envelope, load_attestation_schema())
+
+
+def validate_public_key_registry(registry: dict[str, Any]) -> SchemaValidationResult:
+    """Validate a public key registry document."""
+    return _validate_against(registry, load_public_key_registry_schema())

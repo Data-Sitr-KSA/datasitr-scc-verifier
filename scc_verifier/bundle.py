@@ -69,7 +69,7 @@ regulatory change. Major-version bumps (1.0 → 2.0) track SDAIA template
 amendments; the date suffix moves with the major bump.
 """
 
-BUNDLE_BUILD_DATE = "2026-04-17"
+BUNDLE_BUILD_DATE = "2026-05-23"
 """
 Build-time provenance: the day this bundle's code was cut. Used for
 diagnostics and reproducibility traceability; not part of the attestation

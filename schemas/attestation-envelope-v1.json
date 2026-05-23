@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://datasitr.com/schemas/attestation-envelope-v1.json",
   "title": "SCC Compliance Attestation Envelope v1",
-  "description": "Signed verdict produced by a machine-verifiable SCC compliance check. Follows W3C Verifiable Credentials data-model v2.0 shape. Deterministic: same inputs and same rule bundle produce byte-identical attestations.",
+  "description": "Signed verdict produced by a machine-verifiable SCC compliance check. Follows W3C Verifiable Credentials data-model v2.0 shape. The credentialSubject, rule-bundle hash, and verdict are reproducible for the same SCC document and rule bundle. The full envelope includes issuance time and signature metadata, so it is byte-identical across runs only when those inputs are fixed.",
   "type": "object",
   "required": ["@context", "type", "id", "issuer", "validFrom", "credentialSubject", "proof"],
   "properties": {

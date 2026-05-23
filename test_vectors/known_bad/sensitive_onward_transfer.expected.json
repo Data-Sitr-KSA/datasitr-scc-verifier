@@ -1,9 +1,0 @@
-{
-  "verdict": "FAIL",
-  "v0_2_expected": "FAIL",
-  "notes": "SCC declares PDPL Article 18 sensitive category (health data) AND permits onward transfers. VAL-SENSITIVE-ROUTE correctly fires FAIL; all other rules produce their expected outcomes. This vector is the canonical regression test for the Article 18 onward-transfer guard.",
-  "required_check_ids_fail": [
-    "VAL-SENSITIVE-ROUTE"
-  ],
-  "regulatory_violation": "Article 18 sensitive category declared alongside `onward_transfers.permitted: true` — combination forbidden by the Data Transfer Regulations."
-}

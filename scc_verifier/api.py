@@ -1,8 +1,9 @@
 """Public dataclasses and top-level API for the verifier.
 
-All envelopes are designed to canonicalize (RFC 8785 JCS) to a
-byte-identical form across verifier implementations, so third parties can
-reproduce verdicts independently.
+The credential subject, rule-bundle hash, and verdict are designed to
+canonicalize (RFC 8785 JCS) reproducibly across verifier implementations.
+The full signed envelope also includes issuance time and signature metadata,
+so it is byte-identical across runs only when those inputs are fixed.
 
 Public API surface (stable for v0.2):
     validate_schema(scc_document) -> SchemaValidationResult
